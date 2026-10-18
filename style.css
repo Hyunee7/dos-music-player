@@ -1,0 +1,296 @@
+/* style.css - 전체 파일 통합 전사본 */
+:root {
+  --bg-main: #0000a8;       /* 고전 도스 블루 */
+  --bg-select: #00a8a8;     /* 선택 및 청록색 */
+  --text-main: #a8a8a8;     /* 기본 실버 텍스트 */
+  --color-white: #ffffff;
+  --color-yellow: #ffff54;
+  --color-cyan: #54ffff;
+  --color-gray: #7f7f7f;
+  --border-highlight: #ffffff;
+  --border-dark: #545454;
+  --toggle-active-bg: #00a8a8;
+  --toggle-active-text: #ffffff;
+
+  /* 비주얼라이저 전용 고전 LED 색상 배정 */
+  --segment-inactive: #1a1a26;
+  --meter-low: #00a800;     /* 기본 주파수 녹색 */
+  --meter-mid: #a8a800;     /* 중간 주파수 황색 */
+  --meter-high: #a80000;    /* 임계 주파수 적색 */
+  --meter-peak: #54ffff;    /* 피크 탑 홀드 스카이블루 */
+  --spectrum-bar-bg: #000000;
+}
+
+body {
+  background-color: #000000;
+  color: var(--text-main);
+  font-family: 'Courier New', monospace;
+  margin: 0;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.dos-container {
+  width: 960px;
+  height: 640px;
+  background-color: #000000;
+  border: 4px solid var(--color-gray);
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.dos-title-bar {
+  background-color: var(--color-gray);
+  color: #000000;
+  padding: 2px 8px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+}
+
+.dos-link {
+  color: #000000;
+  text-decoration: none;
+}
+
+.dos-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.dos-grid-2col {
+  grid-template-columns: 1fr 1fr;
+  flex: 1;
+  min-height: 0;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.flex { display: flex; }
+.flex-1 { flex: 1; }
+.flex-shrink-0 { flex-shrink: 0; }
+.gap-8 { gap: 8px; }
+.align-center { align-items: center; }
+.justify-center { justify-content: center; }
+
+.dos-panel.raised {
+  border-top: 2px solid var(--border-highlight);
+  border-left: 2px solid var(--border-highlight);
+  border-bottom: 2px solid var(--border-dark);
+  border-right: 2px solid var(--border-dark);
+  background-color: var(--bg-main);
+  box-sizing: border-box;
+}
+
+.dos-panel-title {
+  background-color: var(--color-gray);
+  color: #000000;
+  padding: 2px 6px;
+  font-weight: bold;
+  font-size: 14px;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dos-panel-content {
+  padding: 6px;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.drop-zone {
+  border: 2px dashed var(--text-main);
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-main);
+}
+
+.dos-button {
+  background-color: var(--color-gray);
+  color: #000000;
+  border-top: 2px solid var(--border-highlight);
+  border-left: 2px solid var(--border-highlight);
+  border-bottom: 2px solid #000000;
+  border-right: 2px solid #000000;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dos-button:active, .dos-button-active {
+  background-color: var(--toggle-active-bg) !important;
+  color: var(--toggle-active-text) !important;
+  border-top: 2px solid #000000 !important;
+  border-left: 2px solid #000000 !important;
+  border-bottom: 2px solid var(--border-highlight) !important;
+  border-right: 2px solid var(--border-highlight) !important;
+}
+
+.dos-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 16채널 플렉스 그리드 배치 엔진 */
+.visualizer-panel {
+  flex: 1;
+  background-color: #000000 !important;
+}
+.spectrum-container {
+  display: flex;
+  gap: 2px;
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  background: #000000;
+}
+.spectrum-bar-segment-wrapper {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  background-color: #000000;
+}
+
+.dos-list {
+  background-color: #000000;
+  border-top: 2px solid var(--border-dark);
+  border-left: 2px solid var(--border-dark);
+  border-bottom: 2px solid var(--border-highlight);
+  border-right: 2px solid var(--border-highlight);
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.dos-list-scroll {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.dos-list-item {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  cursor: pointer;
+  color: var(--text-main);
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.dos-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dos-list-item-selected {
+  background-color: var(--bg-select) !important;
+  color: var(--color-white) !important;
+}
+
+.dos-badge {
+  padding: 1px 4px;
+  font-size: 12px;
+  font-weight: bold;
+  background-color: #000;
+  color: var(--color-cyan);
+  border: 1px solid var(--color-cyan);
+  margin-right: 6px;
+  text-transform: uppercase;
+}
+
+.dos-progress-bar {
+  background-color: #000;
+  border: 2px solid var(--border-dark);
+  position: relative;
+  height: 20px;
+}
+
+.dos-progress-fill {
+  background-color: var(--bg-select);
+  height: 100%;
+  width: 0%;
+}
+
+.dos-progress-text {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--color-white);
+  font-size: 13px;
+}
+
+.dos-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dos-slider-input {
+  width: 100%;
+  accent-color: var(--bg-select);
+  cursor: pointer;
+}
+
+.lyrics-viewport {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-cyan);
+  font-size: 18px;
+  text-align: center;
+}
+
+.dos-status-bar {
+  background-color: var(--color-gray);
+  color: #000000;
+  padding: 2px 8px;
+  margin-top: 6px;
+}
+
+.hidden { display: none !important; }
+
+/* 오레이 및 모달 제어 */
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.loading-panel { width: 320px; text-align: center; }
+.loading-title { color: var(--color-yellow); font-size: 16px; margin-bottom: 4px; }
+.folder-name { color: var(--color-white); font-size: 16px; text-transform: uppercase; margin-bottom: 8px; }
+.loading-status { color: var(--color-cyan); margin-bottom: 8px; }
+.current-file-box { background: var(--color-gray); border: 2px solid #000; padding: 4px; overflow: hidden; }
+.current-file-text { color: var(--color-yellow); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.dialog-scroll-area { padding: 8px; height: 250px; overflow-y: auto; font-size: 14px; line-height: 1.5; }
+.modal-panel { width: 500px; }
+.modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; }
+.modal-wrapper { position: absolute; top: 10%; left: 10%; width: 80%; height: 70%; z-index: 101; }

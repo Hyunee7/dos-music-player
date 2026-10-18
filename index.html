@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DOS 음악 플레이어 (IMS Player)</title>
+  <link rel="stylesheet" type="text/css" href="./style.css">
+  <script src="https://unpkg.com"></script>
+</head>
+<body>
+
+  <div class="dos-container">
+    
+    <!-- 로딩 오버레이 (클래스 명에 hidden 선언) -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+      <div class="dos-panel raised loading-panel">
+        <div class="dos-panel-title">
+          <span class="icon-folder">📁 음악 파일 로딩 중</span>
+        </div>
+        <div class="dos-panel-content">
+          <div id="folderNameDisplay" class="folder-name">./FOLDER</div>
+          <div id="loadingStatus" class="loading-status">파일 로딩 중... 0 / 0</div>
+          <div class="current-file-box">
+            <div id="currentLoadingFile" class="current-file-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 지원 포맷 다이얼로그 모달 -->
+    <div id="formatDialogBackdrop" class="modal-backdrop hidden"></div>
+    <div id="formatDialog" class="modal-wrapper hidden">
+      <div class="dos-panel raised modal-panel">
+        <div class="dos-panel-title">
+          <span>지원 포맷</span>
+          <button id="closeDialogBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><i data-lucide="x"></i></button>
+        </div>
+        <div class="dos-panel-content">
+          <div class="dos-list dialog-scroll-area">
+            <div style="color: var(--text-main); margin-bottom: 4px;">[ AdLib / OPL ]</div>
+            <div><span class="format-ext">IMS</span> - IMPlay Song 포맷 (한국 도스 음악)</div>
+            <div><span class="format-ext">ROL</span> - AdLib Visual Composer 포맷</div>
+            <div><span class="format-ext">VGM</span> - Video Game Music 포맷</div>
+            <div style="color: var(--text-main); margin-top: 12px; margin-bottom: 4px;">[ MOD / Tracker ]</div>
+            <div><span class="format-ext">MOD</span> / <span class="format-ext">XM</span> / <span class="format-ext">S3M</span> / <span class="format-ext">IT</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. 최상단 타이틀 바 -->
+    <div class="dos-title-bar">
+      <a href="https://naver.com" target="_blank" rel="noopener noreferrer" class="dos-link">도스박물관</a>
+      <span> IMS Player v1.0.0</span>
+    </div>
+
+    <!-- 2. 메인 콘텐츠 그리드 -->
+    <div class="dos-grid dos-grid-2col">
+      
+      <!-- 좌측 카테고리: 시각화 및 오디오 조작 컨트롤러 -->
+      <div class="flex-column">
+        
+        <!-- 상단 폴더 선택기 및 탐색 제어 패널 -->
+        <div class="dos-panel raised">
+          <div class="dos-panel-content">
+            <input type="file" id="folderInput" multiple webkitdirectory style="display: none;">
+            <div id="dropZone" class="drop-zone">
+              <div class="flex align-center gap-8 justify-center">
+                <span>📁</span> <span id="folderLabel">폴더를 드래그하거나 클릭하여 선택</span>
+              </div>
+            </div>
+            
+            <div class="flex gap-8" style="margin-top: 6px;">
+              <!-- 재생 제어 그룹 버튼 -->
+              <div class="flex flex-1" style="gap: 2px;">
+                <button id="btnPrev" class="dos-button" disabled><i data-lucide="skip-back"></i></button>
+                <button id="btnPlay" class="dos-button"><i data-lucide="play"></i></button>
+                <button id="btnStop" class="dos-button" disabled><i data-lucide="square"></i></button>
+                <button id="btnNext" class="dos-button" disabled><i data-lucide="skip-forward"></i></button>
+              </div>
+              
+              <!-- 반복 상태 제어 버튼 -->
+              <div class="flex" style="gap: 2px;">
+                <button id="repeatAll" class="dos-button dos-button-active"><i data-lucide="repeat"></i></button>
+                <button id="repeatOne" class="dos-button"><i data-lucide="repeat-1"></i></button>
+                <button id="repeatShuffle" class="dos-button"><i data-lucide="shuffle"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 16채널 개별 캔버스 그리드로 보정된 스펙트럼 패널 -->
+        <div class="dos-panel raised visualizer-panel">
+          <div class="dos-panel-content" style="height: 100%; padding: 0;">
+            <div id="spectrumContainer" class="spectrum-container">
+              <!-- JS에 의해 16개의 개별 inset 캔버스가 동적 렌더링됩니다 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 하단 타임트랙 진행률바 및 볼륨 패널 -->
+        <div class="dos-panel raised flex-shrink-0">
+          <div class="dos-panel-content">
+            <div class="dos-progress-bar" style="margin-bottom: 8px;">
+              <div id="progressFill" class="dos-progress-fill"></div>
+              <div id="progressText" class="dos-progress-text">--:-- / --:--</div>
+            </div>
+            
+            <!-- 슬라이더 컴포넌트 구조화 -->
+            <div class="dos-slider-container">
+              <div id="sliderLabel" class="dos-slider-label">볼륨</div>
+              <div class="dos-slider-track">
+                <input type="range" id="volumeSlider" min="0" max="200" value="100" class="dos-slider-input">
+              </div>
+              <div id="sliderValue" class="dos-slider-value">100%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 전역 시스템 경고/알림 창 -->
+        <div id="errorMessage" class="dos-message dos-message-error hidden"></div>
+      </div>
+
+      <!-- 우측 카테고리: 음원 리스트 브라우저 -->
+      <div class="flex-column">
+        <div class="dos-panel raised flex-1" style="display: flex; flex-direction: column; height: 100%;">
+          <div class="dos-panel-title">
+            <span id="listTitle">🎵 샘플 음악</span>
+            <button id="helpBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><i data-lucide="help-circle"></i></button>
+          </div>
+          <div class="dos-panel-content" style="flex: 1; min-height: 0; padding: 4px;">
+            <div class="dos-list">
+              <div class="dos-list-scroll" id="musicTrackList">
+                <!-- JS를 통해 트랙 목록(dos-list-item) 동적 렌더링 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3. 하단 실시간 가사 출력창 -->
+    <div class="dos-panel raised dos-panel-credits" style="height: 140px; margin-top: 6px;">
+      <div class="dos-panel-content" style="height: 100%; padding: 0;">
+        <div id="lyricsDisplay" class="lyrics-viewport">
+          <div class="lyrics-fallback">READY TO PLAY...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. 최하단 정보 상태바 -->
+    <div class="dos-status-bar">
+      <div id="statusBarText" class="dos-status-item">대기</div>
+    </div>
+  </div>
+
+  <!-- index.html 최하단 스크립트 배치부 -->
+  <!-- 1. 핵심 컴파일 껍데기 라이브러리를 먼저 안착시킵니다 -->
+  <script src="./libopenmpt.js"></script>
+  <script src="./adplug.js"></script>
+  
+  <!-- 2. 순수 자바스크립트 기반 바이너리 메타 파서를 배치합니다 -->
+  <script src="./player-parser.js"></script>
+  
+  <!-- 3. 전역 window.TrackerAudioEngine을 생성하는 핵심 연산 엔진을 로드합니다 -->
+  <script src="./player-engine.js"></script>
+  
+  <!-- 4. 마지막으로 위 노드들을 제어하고 이벤트를 연결하는 player.js를 구동합니다 -->
+  <script src="./player.js"></script>
+</body>
+</html>
