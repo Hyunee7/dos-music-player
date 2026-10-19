@@ -1,52 +1,62 @@
 /**
- * player-parser.js - Part 1: 고성능 조합형(Johab) 한글 및 아스키 복합 문자열 정밀 디코더
- * 특수문자, 공백 및 1바이트/2바이트 가변 오프셋 꼬임 현상을 완벽하게 교정했습니다.
+ * player-parser.js - Part 1: 순수 비트 매핑 기반 상용 조합형 한글 표준 유니코드 변환 엔진
+ * 브라우저 TextDecoder 엔진 의존성을 완전히 제거하여 인코딩 오류를 완벽히 청소했습니다.
  */
 
 window.ChipTuneTitleParser = (function() {
   
   /**
-   * 16비트 조합형 코드 한 글자를 정밀 분석하여 유니코드로 복원
+   * 16비트 상용 조합형(5-5-5 비트 구조) 코드 데이터를 현대 유니코드 완성형 음절로 결합 치환
    */
   function decodeJohabChar(code) {
-    // 최상위 비트가 0이면 영문/아스키이므로 그대로 문자로 변환
+    // 1바이트 영문 및 일반 아스키 기호 처리
     if ((code & 0x8000) === 0) {
       return String.fromCharCode(code & 0xFF);
     }
 
-    // 채움 코드 또는 공백 영역 예외 방어 (조합형 공백 부근 락 버그 차단)
+    // 조합형 특수문자 공백 및 채움 데이터 찌꺼기 예외 방어
     if (code === 0xD931 || code === 0x3232 || (code & 0x7FFF) === 0) {
       return " ";
     }
 
-    // 초성(비트 10~14), 중성(비트 5~9), 종성(비트 0~4) 5비트씩 정밀 추출
+    // 5비트씩 초성, 중성, 종성 비트 분해 (1v ccccc jjjjj ddddd)
     const cho = (code >> 10) & 0x1F;
     const jung = (code >> 5) & 0x1F;
     const jong = code & 0x1F;
 
-    // 상용 조합형 5비트 인덱스를 현대 유니코드 완성형 한글 인덱스로 매핑하는 표준 테이블
-    const choMap = [-1,-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
-    const jungMap = [-1,-1, 0, 1, 2, 3, 4, -1, -1, 5, 6, 7, 8, 9, 10, -1, -1, 11, 12, 13, 14, 15, 16, -1, -1, 17, 18, 19, 20, 21, -1, -1];
-    const jongMap = [ 0,-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, -1, -1];
+    // 1. 초성 매핑 테이블: 조합형 비트값(0x02~0x14) -> 유니코드 초성 인덱스(0~18)
+    const choTable = [
+      -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+    ];
 
-    const cIdx = choMap[cho];
-    const jIdx = jungMap[jung];
-    const dIdx = jongMap[jong];
+    // 2. 중성 매핑 테이블: 조합형 비트값(0x03~0x1E) -> 유니코드 중성 인덱(0~20)
+    const jungTable = [
+      -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, -1, -1, 8, 9, 10, 11, 12, 13, 14, -1, -1, 15, 16, 17, 18, 19, 20, 21, 22, -1, -1
+    ];
 
-    // 매핑 테이블을 벗어나는 특수문자 또는 빈 자모 영역 방어 폴백
+    // 3. 종성 매핑 테이블: 조합형 비트값(0x02~0x1E) -> 유니코드 종성 인덱스(1~27)
+    // 초성/중성만 있고 받침이 없는 글자는 종성 비트가 0x01(채움 코드)이 되므로 이 경우 0으로 강제 보정합니다.
+    const jongTable = [
+      -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, -1, -1
+    ];
+
+    const cIdx = choTable[cho];
+    const jIdx = jungTable[jung];
+    const dIdx = (jong === 0x01 || jong === 0x00) ? 0 : jongTable[jong];
+
+    // 규격 외 기호 및 예외 문자 방어 처리
     if (cIdx === -1 || jIdx === -1 || dIdx === -1) {
-      // 조합형 특수문자 부근(0xD900번대 계열) 폴백 문자로 흡수 처리
-      if (cho === 0xD || cho === 0x1A) return "·";
-      return ""; 
+      if (cho === 0xD || cho === 0x1A) return "·"; 
+      return "";
     }
 
-    // 현대 한글 유니코드 공식 연산 연쇄 결합
+    // 초성(19자) * 21 * 28 + 중성(21자) * 28 + 종성(28자) 한글 유니코드 합성 방정식 연산
     const uniCode = (cIdx * 21 * 28) + (jIdx * 28) + dIdx + 0xAC00;
     return String.fromCharCode(uniCode);
   }
 
   /**
-   * 1바이트 아스키와 2바이트 한글이 혼용된 바이너리 바이트열을 가변 오프셋으로 정밀 전사
+   * 1바이트 아스키와 2바이트 조합형 글자가 가변으로 뒤섞인 바이트 스트림 정밀 디코더
    */
   function decodeJohabString(uint8Array) {
     let result = "";
@@ -54,19 +64,18 @@ window.ChipTuneTitleParser = (function() {
     
     while (i < uint8Array.length) {
       const b1 = uint8Array[i];
-      if (b1 === 0) break; // 문자열 끝단 탈출
+      if (b1 === 0) break; // 문자열 끝 감지
 
-      // 최상위 비트(0x80)가 켜져 있으면 2바이트 한글/한자/특수 규격 문자열
       if (b1 & 0x80) {
         if (i + 1 >= uint8Array.length) break;
         const b2 = uint8Array[i + 1];
         
-        // 2바이트 결합 연산
+        // 2바이트를 결합해 16비트 조합형 코드로 스캔 연산
         const code = (b1 << 8) | b2;
         result += decodeJohabChar(code);
-        i += 2; // 2바이트 전진
+        i += 2; // 2바이트 한글 크기만큼 전진
       } else {
-        // 1바이트 일반 영문/숫자/기호 처리
+        // 1바이트 영문 및 기호 아스키 복원
         if (b1 >= 32 && b1 <= 126) {
           result += String.fromCharCode(b1);
         } else if (b1 === 32) {
@@ -76,7 +85,6 @@ window.ChipTuneTitleParser = (function() {
       }
     }
     
-    // 무분별한 널 문자와 고전 공백 데이터 찌꺼기 문자열 정돈 정리
     return result.replace(/\0/g, '').replace(/\s+/g, ' ').trim();
   }
 
@@ -90,18 +98,9 @@ window.ChipTuneTitleParser = (function() {
     }
     return str.trim();
   }
-
-  function readUInt16LE(u8, offset) {
-    return u8[offset] | (u8[offset + 1] << 8);
-  }
-
-  function readInt8(u8, offset) {
-    const val = u8[offset];
-    return val & 0x80 ? val - 256 : val;
-  }
 //2
   /**
-   * player-parser.js - Part 2: 음원 원제목 획득 및 .ISS 파일 바이너리 구조 분해 마감 인터페이스
+   * player-parser.js - Part 2: 외부 인터페이스 리턴 마감 개방
    */
 
   return {
@@ -112,17 +111,16 @@ window.ChipTuneTitleParser = (function() {
       try {
         if (ext === '.ims') {
           if (u8.length < 36) return filename.replace(/\.[^.]+$/, '');
-          // 오프셋 6번지부터 30바이트간 명시된 조합형 음원 정보 정밀 복원 가동
+          // 오프셋 6번지부터 30바이트간 명시된 상용 조합형 문자 배열 디코딩
           const songNameBytes = u8.subarray(6, 36);
-          const krTitle = decodeJohabString(songNameBytes);
-          return krTitle || filename.replace(/\.[^.]+$/, '');
+          return decodeJohabString(songNameBytes) || filename.replace(/\.[^.]+$/, '');
         } 
         else if (ext === '.mod') return readAscii(u8, 0, 20);
         else if (ext === '.s3m') return readAscii(u8, 0, 28);
         else if (ext === '.xm') return readAscii(u8, 17, 20);
         else if (ext === '.it') return readAscii(u8, 4, 26);
       } catch (e) { 
-        console.error("바이너리 타이틀 획득 중 크래시:", e); 
+        console.error("바이너리 메타데이터 제목 변환 실패:", e); 
       }
       return filename.replace(/\.[^.]+$/, '');
     },
@@ -131,37 +129,35 @@ window.ChipTuneTitleParser = (function() {
       const u8 = new Uint8Array(arrayBuffer);
       if (u8.length < 154) return null;
 
-      let offset = 0;
-      offset += 30; // Signature "IMPlay Song V2.0    " + Reserved 건너뛰기
+      let offset = 30; // Signature 및 Reserved 데이터 스킵
 
-      // 조합형 크레딧 문자열 복원 (작사, 작곡, 가수, 편집자)
+      // .ISS 텍스트 메타데이터 정보 복원 디코딩
       const writer = decodeJohabString(u8.subarray(offset, offset + 30)); offset += 30;
       const composer = decodeJohabString(u8.subarray(offset, offset + 30)); offset += 30;
       const singer = decodeJohabString(u8.subarray(offset, offset + 30)); offset += 30;
       const editor = decodeJohabString(u8.subarray(offset, offset + 30)); offset += 30;
 
-      const recCount = readUInt16LE(u8, offset); offset += 2;
-      const lineCount = readUInt16LE(u8, offset); offset += 2;
+      const recCount = u8[offset] | (u8[offset + 1] << 8); offset += 2;
+      const lineCount = u8[offset] | (u8[offset + 1] << 8); offset += 2;
 
-      // 틱 연동 자막 동기화 레코드 리스트 구조화
+      // 카라오케 시간 틱 싱크 레코드 전사
       const records = [];
       for (let i = 0; i < recCount; i++) {
         if (offset + 5 > u8.length) break;
-        records.push({
-          kasaTick: readUInt16LE(u8, offset),
-          line: readInt8(u8, offset + 2),
-          startX: readInt8(u8, offset + 3),
-          widthX: readInt8(u8, offset + 4)
-        });
+        const kasaTick = u8[offset] | (u8[offset + 1] << 8);
+        const line = u8[offset + 2] & 0x80 ? u8[offset + 2] - 256 : u8[offset + 2];
+        const startX = u8[offset + 3] & 0x80 ? u8[offset + 3] - 256 : u8[offset + 3];
+        const widthX = u8[offset + 4] & 0x80 ? u8[offset + 4] - 256 : u8[offset + 4];
+        
+        records.push({ kasaTick, line, startX, widthX });
         offset += 5;
       }
 
-      // 개당 64바이트로 하드 코딩된 고전 조합형 한글 가사 줄 바이트 정밀 복원 추출
+      // 개당 64바이트로 구성된 노래방 자막 줄 한글 변환 전사
       const scripts = [];
       for (let i = 0; i < lineCount; i++) {
         if (offset + 64 > u8.length) break;
-        const lineText = decodeJohabString(u8.subarray(offset, offset + 64));
-        scripts.push(lineText);
+        scripts.push(decodeJohabString(u8.subarray(offset, offset + 64)));
         offset += 64;
       }
 

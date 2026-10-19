@@ -140,9 +140,13 @@
 
     </div>
 
-    <!-- 3. 하단 실시간 가사 출력창 -->
-    <div class="dos-panel raised dos-panel-credits" style="height: 140px; margin-top: 6px;">
-      <div class="dos-panel-content" style="height: 100%; padding: 0;">
+    <!-- 3. 하단 실시간 가사 출력창 (카라오케 전광판 보정) -->
+    <div class="dos-panel raised dos-panel-credits" style="height: 120px; margin-top: 6px; display: flex; flex-direction: column;">
+      <div class="dos-panel-title">
+        <span>🎤 KARAOKE LYRICS DISPLAY</span>
+      </div>
+      <div class="dos-panel-content" style="flex: 1; min-height: 0; background-color: #000000; padding: 4px;">
+        <!-- [가장 중요] player.js가 가사를 쏴주는 핵심 심장부 ID 태그입니다 -->
         <div id="lyricsDisplay" class="lyrics-viewport">
           <div class="lyrics-fallback">READY TO PLAY...</div>
         </div>
@@ -153,7 +157,6 @@
     <div class="dos-status-bar">
       <div id="statusBarText" class="dos-status-item">대기</div>
     </div>
-  </div>
 
   <!-- index.html 최하단 스크립트 배치부 -->
   <!-- 1. 핵심 컴파일 껍데기 라이브러리를 먼저 안착시킵니다 -->

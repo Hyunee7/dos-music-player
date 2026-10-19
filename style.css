@@ -153,10 +153,16 @@ body {
 }
 
 /* 16채널 플렉스 그리드 배치 엔진 */
+/* 16채널 고정 소형 사이즈 비주얼라이저 패널 규격 (크기 튐 방지) */
 .visualizer-panel {
-  flex: 1;
+  height: 120px !important;    /* 원래 React 명세의 고정 소형 높이 적용 */
+  min-height: 120px !important;
+  max-height: 120px !important;
   background-color: #000000 !important;
+  box-sizing: border-box;
+  overflow: hidden;
 }
+
 .spectrum-container {
   display: flex;
   gap: 2px;
@@ -164,6 +170,7 @@ body {
   width: 100%;
   box-sizing: border-box;
   background: #000000;
+  padding: 4px;                /* 인셋(inset) 도스 레이아웃 패딩 */
 }
 .spectrum-bar-segment-wrapper {
   flex: 1;
@@ -294,3 +301,49 @@ body {
 .modal-panel { width: 500px; }
 .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; }
 .modal-wrapper { position: absolute; top: 10%; left: 10%; width: 80%; height: 70%; z-index: 101; }
+/* ═══════════════════════════════════════════════════════════════
+   KARAOKE LYRICS DISPLAY SYSTEM DESIGN
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --lyrics-highlight: #54ff54; /* 노래방 특유의 밝은 연두색 발광 자막 */
+  --lyrics-normal: #7f7f7f;    /* 대기 중인 가사의 기본 회색 */
+}
+
+/* 크레딧 링크 전용 장식 */
+.dos-link-credits {
+  color: var(--color-cyan);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.dos-link-credits:hover {
+  color: var(--color-white);
+  background-color: var(--bg-select);
+}
+/* ═══════════════════════════════════════════════════════════════
+   KARAOKE VIEWPORT INTERFACE ADJUSTMENT
+   ═══════════════════════════════════════════════════════════════ */
+.lyrics-viewport {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #000000;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.lyrics-fallback {
+  color: var(--color-cyan);
+  font-size: 16px;
+  letter-spacing: 2px;
+  font-weight: bold;
+}
+
+/* 노래방 가사 텍스트 폰트 가독성 스펙 */
+.karaoke-text-line {
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  line-height: 1.6;
+}
