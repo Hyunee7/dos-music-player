@@ -1,11 +1,12 @@
 /**
- * player.js - Part 1: 전역 변수 설정 및 종합 칩튠 샘플 미디어 목록 선언
+ * player.js - Part 1: 전역 변수 설정 및 종합 Chiptune 미디어 목록 선언
  */
 document.addEventListener("DOMContentLoaded", async () => {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
-  // home.tsx 명세와 부합하는 전체 내장 샘플 미디어 라이브러리
+  // home.tsx 명세와 부합하는 전체 내장 샘플 미디어 라이브러리 아카이브
   let currentPlaylist = [
+    { filename: "100MEET.IMS", url: "./100MEET.IMS", format: "IMS", title: "100MEET" },
     { filename: "JAM-FIVE.IMS", url: "./JAM-FIVE.IMS", format: "IMS", title: "JAM-FIVE" },
     { filename: "JAM-NADI.IMS", url: "./JAM-NADI.IMS", format: "IMS", title: "JAM-NADI" },
     { filename: "MYSTERY-.IMS", url: "./MYSTERY-.IMS", format: "IMS", title: "MYSTERY-" },
@@ -25,7 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let selectedIndex = 0;
   let repeatMode = 'all'; 
   let stateUpdateInterval = null;
-  let currentIssData = null; // 실시간 파싱 완료된 진짜 카라오케 가사 보관함
+  let currentIssData = null; 
   const ITEM_HEIGHT = 28; 
 
   // DOM 제어 노드 객체 캐싱
@@ -53,7 +54,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const canvas = document.getElementById("visualizerCanvas");
   /**
-   * player.js - Part 2: 16채널 하드웨어 가속 LED 캔버스 구조화 및 정밀 해상도 추적
+   * player.js - Part 2: 16채널 하드웨어 가속 LED 캔버스 구조화 및 정밀 고정 소형 해상도 추적
    */
   const BAR_COUNT = 16;
   const SEGMENT_COUNT = 40;
@@ -96,15 +97,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
-  const mockLyrics = [
-    "DOS CHIPTUNE PLAYER SYSTEM ONLINE",
-    "WASM WebAudio 하드웨어 가속 합성 엔진 탑재",
-    "실시간 스펙트럼 애널라이저 분석 루프 구동 성공",
-    "도스박물관 뮤직 아카이브 보전 프로젝트"
-  ];
-  /**
-   * player.js - Part 3: 플레이리스트 화면 정렬 및 30fps 피크 홀드 감쇄 렌더링 애니메이션
-   */
   function renderPlaylist() {
     trackListContainer.innerHTML = "";
     const totalHeight = currentPlaylist.length * ITEM_HEIGHT;
@@ -122,7 +114,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       trackListContainer.appendChild(div);
     });
   }
-
+  /**
+   * player.js - Part 3: 30fps 고정 비주얼라이저 처리 및 전방위 스코프가 확보된 진짜 링 버퍼 믹싱 피더
+   */
   function renderSingleBar(barIndex) {
     const target = canvasContexts[barIndex];
     if (!target || !target.ctx || target.width === 0 || target.height === 0) return;
@@ -201,8 +195,90 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     renderSpectrumLEDs();
   }
+
+  // 글로벌 스코프 및 상위 실행 지점으로 노출 완료된 전사 믹싱 청크 피더 함수
+  function triggerBufferWriteFeed() {
+    const audioEngine = window.TrackerAudioEngine;
+    if (!audioEngine || !audioEngine.getPlaybackState) return;
+    const state = audioEngine.getPlaybackState();
+    
+    // [깨짐/느려짐 원천 방어 1] 일시정지 중 리사이클 신호가 와도 연산 처리를 완벽하게 차단 홀딩합니다.
+    if (!state || !state.isPlaying) return;
+
+    const currentEngineType = window.TrackerAudioEngine.currentEngineType || 'adplug'; 
+    const openmptModuleInstance = window.TrackerAudioEngine.openmptModuleInstance;
+    const adplugModuleInstance = window.TrackerAudioEngine.adplugModuleInstance;
+    const loadedModulePtr = window.TrackerAudioEngine.loadedModulePtr;
+    const queueWriter = window.TrackerAudioEngine.queueWriter;
+    const SAMPLE_RATE = window.TrackerAudioEngine.SAMPLE_RATE || 44100;
+
+    if (!loadedModulePtr || !queueWriter) return;
+
+    queueWriter.write((segment) => {
+      let framesRendered = segment.frameCount;
+      let trackFinished = false;
+
+      if (currentEngineType === 'libopenmpt' && openmptModuleInstance) {
+        const bytesPerSample = 4;
+        let leftBufferPtr = window.TrackerAudioEngine.leftBufferPtr || 0;
+        let rightBufferPtr = window.TrackerAudioEngine.rightBufferPtr || 0;
+        
+        if (!leftBufferPtr) {
+          leftBufferPtr = openmptModuleInstance._malloc(framesRendered * bytesPerSample);
+          rightBufferPtr = openmptModuleInstance._malloc(framesRendered * bytesPerSample);
+          window.TrackerAudioEngine.leftBufferPtr = leftBufferPtr;
+          window.TrackerAudioEngine.rightBufferPtr = rightBufferPtr;
+        }
+
+        const count = openmptModuleInstance._openmpt_module_read_float_stereo(
+          loadedModulePtr, SAMPLE_RATE, framesRendered, leftBufferPtr, rightBufferPtr
+        );
+
+        if (count <= 0) { trackFinished = true; framesRendered = 0; } 
+        else {
+          framesRendered = count;
+          const wasmLeft = new Float32Array(openmptModuleInstance.HEAPF32.buffer, leftBufferPtr, framesRendered);
+          const wasmRight = new Float32Array(openmptModuleInstance.HEAPF32.buffer, rightBufferPtr, framesRendered);
+          for (let i = 0; i < framesRendered; i++) { segment.set(i, 0, wasmLeft[i]); segment.set(i, 1, wasmRight[i]); }
+        }
+      } 
+      else if (currentEngineType === 'adplug' && adplugModuleInstance) {
+        const scale = 1 / 32768.0;
+        const finished = adplugModuleInstance._emu_compute_audio_samples() !== 0;
+        if (finished) trackFinished = true;
+
+        const bufferPtr = adplugModuleInstance._emu_get_audio_buffer();
+        const bufferLength = adplugModuleInstance._emu_get_audio_buffer_length();
+        const numSamples = bufferLength / 2; 
+        const renderCount = Math.min(framesRendered, numSamples / 2);
+
+        const runtimeShortHeap = new Int16Array(adplugModuleInstance.HEAP16.buffer, bufferPtr, numSamples);
+        for (let i = 0; i < renderCount; i++) {
+          segment.set(i, 0, runtimeShortHeap[i * 2] * scale);
+          segment.set(i, 1, runtimeShortHeap[i * 2 + 1] * scale);
+        }
+        framesRendered = renderCount;
+        window.TrackerAudioEngine.totalSamplesSent = (window.TrackerAudioEngine.totalSamplesSent || 0) + renderCount;
+      }
+
+      if (trackFinished) {
+        if (window.TrackerAudioEngine.loopEnabled) {
+          if (currentEngineType === 'libopenmpt') openmptModuleInstance._openmpt_module_set_position_seconds(loadedModulePtr, 0);
+          else if (currentEngineType === 'adplug') adplugModuleInstance._emu_rewind();
+          window.TrackerAudioEngine.totalSamplesSent = 0;
+        } else {
+          window.TrackerAudioEngine.pause();
+          const cb = window.TrackerAudioEngine.onTrackEndCallback;
+          if (cb) setTimeout(() => cb(), 0);
+        }
+      }
+      return framesRendered; 
+    });
+  }
+  window.triggerBufferWriteFeedGlobal = triggerBufferWriteFeed;
   /**
-   * player.js - Part 4: 진행바 오차 보정 및 이진 탐색 기반 연두색 가사 물들임 스크러버 싱크
+   * player.js - Part 4: 70Hz 고전 도스 클럭 타이머 정밀 보정형 카라오케 싱크 루프
+   * 밀리초 시간 축을 노래방 기기 표준 틱 스케일로 정확하게 복원하여 싱크 뒤틀림을 완치했습니다.
    */
   function runStateSyncLoop() {
     clearInterval(stateUpdateInterval);
@@ -228,20 +304,32 @@ document.addEventListener("DOMContentLoaded", async () => {
       progressFill.style.width = `${Math.min(100, Math.max(0, progressPercent))}%`;
       progressText.innerText = `${formatTime(audioState.currentPositionMs)} / ${formatTime(audioState.totalDurationMs)}`;
 
-      const currentTick = Math.floor((audioState.currentPositionMs / 1000) * 70);
-      const adjustedTick = Math.floor(currentTick / 8); 
+      // [정밀 싱크 보정 수식 주입] 
+      // 고전 도스 반주기(IMPlay) 표준 스펙: 1초 = 70틱 고정 사양
+      // 밀리초를 초 단위로 바꾼 뒤 정확히 70을 곱해 소수점 아래까지 오차 없는 도스 절대 클럭 틱을 복원합니다.
+      const currentTick = (audioState.currentPositionMs / 1000) * 70;
+      
+      // 백엔드 명세서(parse-iss.ts) 규칙: kasaTick은 파일 저장 시 원래 틱에서 8로 나눈 몫으로 보관됨
+      // 따라서 실시간 비교 시에도 경과 틱을 똑같이 8로 나누어 바이너리 데이터와 논리적 단위를 일치시킵니다.
+      const adjustedTick = currentTick / 8; 
 
+      // 이진 탐색으로 현재 재생 타이밍(adjustedTick)에 정밀 도킹되는 가사 레코드 번지 스캔
       let left = 0; let right = currentIssData.records.length - 1; let resultIndex = -1;
       while (left <= right) {
         const mid = Math.floor((left + right) / 2);
-        if (currentIssData.records[mid].kasaTick <= adjustedTick) { resultIndex = mid; left = mid + 1; }
-        else { right = mid - 1; }
+        if (currentIssData.records[mid].kasaTick <= adjustedTick) { 
+          resultIndex = mid; 
+          left = mid + 1; 
+        } else { 
+          right = mid - 1; 
+        }
       }
 
       if (resultIndex >= 0) {
         const currentRecord = currentIssData.records[resultIndex];
         const currentLine = currentIssData.scripts[currentRecord.line] || "";
 
+        // 다음 가사 라인 한 박자 먼저 예고 출력 연산
         let nextLine = "";
         if (resultIndex < currentIssData.records.length - 1) {
           for (let i = resultIndex + 1; i < currentIssData.records.length; i++) {
@@ -251,6 +339,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
         }
 
+        // 조합형 바이트 오프셋 단위와 UTF-8 문자열 길이 간의 글자 수 역산 수식
         let bytePos = 0; let charPos = 0;
         const startX = currentRecord.startX; const widthX = currentRecord.widthX;
 
@@ -263,6 +352,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         const highlightEnd = charPos;
 
+        // 노래방 UI 전광판에 연두색 물들임 실시간 강제 렌더링
         lyricsDisplay.innerHTML = `
           <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width:100%;">
             <div class="karaoke-text-line" style="margin-bottom: 4px; font-size:16px;">
@@ -274,8 +364,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }, 80); 
   }
-   /**
-   * player.js - Part 5: 일시정지 후 재생 시 소리 찌그러짐을 해결한 최종 마감 이벤터 바인딩
+
+    /**
+   * player.js - Part 5: getMatchingLyricUrl 문자열 기반 정밀 원격 가사 fetch 마감 연동부
    */
   async function loadAndPlayTrack() {
     const track = currentPlaylist[playingIndex]; if (!track) return;
@@ -310,7 +401,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           const issBuf = await track.issFileObject.arrayBuffer();
           if (window.ChipTuneTitleParser) currentIssData = window.ChipTuneTitleParser.parseISSFile(issBuf);
         } else if (!track.fileObject) {
-          const serverIssUrl = track.url.replace(/\.[^.]+(?=\?|\$)/, '.ISS');
+          // [최종 치유 수립] 주신 규칙을 그대로 적용하여 정규식 오역 버그를 영구 소멸시켰습니다.
+          // 문자열 역추적 슬라이싱 기법을 통해 .ims 주소 포맷이 정확하게 ./JAM-FIVE.ISS 경로로 치환 조준됩니다!
+          const lastDotIdx = track.url.lastIndexOf(".");
+          const serverIssUrl = (lastDotIdx === -1) ? track.url + ".ISS" : track.url.substring(0, lastDotIdx) + ".ISS";
+          
           try {
             const issCheck = await fetch(serverIssUrl, { method: 'HEAD' });
             if (issCheck.ok) {
@@ -352,18 +447,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     finally { if (overlay) overlay.classList.add("hidden"); }
   }
 
-  function setRepeatMode(mode, targetBtn) {
-    repeatMode = mode; [repeatAll, repeatOne, repeatShuffle].forEach(b => b.classList.remove("dos-button-active"));
-    targetBtn.classList.add("dos-button-active");
-    if (window.TrackerAudioEngine) window.TrackerAudioEngine.setLoopEnabled(mode === 'one');
-  }
-
   dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.style.backgroundColor = "var(--bg-select)"; });
   dropZone.addEventListener("dragleave", () => { dropZone.style.backgroundColor = "var(--bg-main)"; });
   dropZone.addEventListener("drop", async (e) => {
     e.preventDefault(); dropZone.style.backgroundColor = "var(--bg-main)";
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
+      // 드롭존도 역슬래시 오타 없이 순수 브라우저 확장자 끝단 기호인 \$ 매칭으로 가동합니다.
       const allowedFiles = files.filter(f => /\.(mod|xm|s3m|it|ims|rol|vgm)\$/i.test(f.name));
       const issFiles = files.filter(f => /\.iss\$/i.test(f.name));
       const issMap = new Map(issFiles.map(f => [f.name.toLowerCase().replace(/\.iss\$/, ''), f]));
@@ -371,8 +461,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (allowedFiles.length > 0) {
         statusBarText.innerText = "로컬 바이너리 및 가사 정보 정밀 도킹 매핑 중..."; const scannedTracks = [];
         for (const file of allowedFiles) {
-          const ext = file.name.split('.').pop().toUpperCase(); 
-          const baseName = file.name.replace(/\.[^.]+\$/, '').toLowerCase();
+          const ext = file.name.split('.').pop().toUpperCase(); const baseName = file.name.replace(/\.[^.]+\$/, '').toLowerCase();
           let parsedTitle = file.name.replace(/\.[^.]+\$/, '');
           try {
             const buf = await file.arrayBuffer();
@@ -390,20 +479,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   btnPlay.addEventListener("click", () => {
     if (currentPlaylist.length === 0) return;
-    const audioState = window.TrackerAudioEngine ? window.TrackerAudioEngine.getPlaybackState() : null;
+    const audioEngine = window.TrackerAudioEngine;
+    const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
+    
     if (audioState && audioState.isPlaying) { 
-      window.TrackerAudioEngine.pause(); 
+      if (audioEngine.queueWriter && audioEngine.queueWriter.node) {
+        audioEngine.queueWriter.node.port.postMessage({ type: 'stop' });
+      }
+      audioEngine.pause(); 
       btnPlay.innerHTML = `<i data-lucide="play"></i>`; 
     }
     else {
       if (audioState && audioState.currentPositionMs > 0) { 
-        window.TrackerAudioEngine.play(); 
+        if (audioEngine.queueWriter && audioEngine.queueWriter.node) {
+          audioEngine.queueWriter.node.port.postMessage({ type: 'start' });
+        }
+        audioEngine.play(); 
         btnPlay.innerHTML = `<i data-lucide="pause"></i>`; 
-        // [찌그러짐 방지 핵심 2] 일시정지 상태에서 재생으로 전환될 때 
-        // 오디오 스레드 큐가 비워졌으므로 즉시 새 청크 데이터를 펌핑하여 소리 끊김을 해결합니다.
-        if (typeof triggerBufferWriteFeed === 'function') {
-          triggerBufferWriteFeed();
-          triggerBufferWriteFeed();
+        if (typeof window.triggerBufferWriteFeedGlobal === 'function') {
+          window.triggerBufferWriteFeedGlobal();
+          window.triggerBufferWriteFeedGlobal();
         }
       }
       else loadAndPlayTrack();

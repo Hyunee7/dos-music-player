@@ -1,16 +1,15 @@
 /**
- * player-engine.js - Part 1: AudioWorklet 가속 큐 스트림 노드 및 WASM 초기화 루틴 (최종 완결 교정본)
+ * player-engine.js - Part 1: 워크렛 핑백 도킹 시그널 수신 인프라 빌드
  */
 
 window.TrackerAudioEngine = (function() {
   let SAMPLE_RATE = 44100;
-  const CHUNK_FRAMES = 4096; // queue-stream.ts 고정 기본 버퍼 프레임 규격
+  const CHUNK_FRAMES = 4096; 
 
   let audioCtx = null;
   let gainNode = null;
   let analyserNode = null;
   
-  // queue-stream.ts 에서 복원 이식한 커스텀 스트리밍 큐 노드 인프라
   let outputQueueNode = null;
   let queueWriter = null;
 
@@ -40,9 +39,6 @@ window.TrackerAudioEngine = (function() {
     '.ha2', '.agd'
   ];
 
-  /**
-   * AudioWorklet 모듈 등록 및 전역 컨텍스트 구성
-   */
   async function initContext() {
     if (!audioCtx) {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -56,18 +52,13 @@ window.TrackerAudioEngine = (function() {
       analyserNode = audioCtx.createAnalyser();
       analyserNode.fftSize = 256;
       analyserNode.smoothingTimeConstant = 0.8;
-      
-      // 애널라이저와 메인 오디오 가속 채널 결합
       gainNode.connect(analyserNode);
       analyserNode.connect(audioCtx.destination);
     }
 
-    // [문법 보정 완료] 유실되어 깨졌던 outputChannelCount 배열 선언부를 [channelCount]로 완벽 교정했습니다.
     if (!outputQueueNode) {
       try {
         await audioCtx.audioWorklet.addModule('./audio-queue-processor.js');
-        
-        // 2채널(스테레오) 출력을 하드웨어 스레드 노드로 매핑 설정
         const workletNode = new AudioWorkletNode(audioCtx, 'audio-queue-processor', {
           numberOfInputs: 0,
           numberOfOutputs: 1,
@@ -77,10 +68,11 @@ window.TrackerAudioEngine = (function() {
         outputQueueNode = workletNode;
         outputQueueNode.connect(gainNode);
 
-        // transferable Float32Array 전사 청크 풀 클래스 모방 장착
         queueWriter = {
           node: workletNode,
           write: function(fillCallback) {
+            if (!isPlaying) return;
+
             const leftData = new Float32Array(CHUNK_FRAMES);
             const rightData = new Float32Array(CHUNK_FRAMES);
             
@@ -93,7 +85,7 @@ window.TrackerAudioEngine = (function() {
             };
 
             const written = fillCallback(segment);
-            if (written > 0) {
+            if (written > 0 && isPlaying) {
               workletNode.port.postMessage({
                 type: 'chunk',
                 channels: [leftData, rightData],
@@ -103,18 +95,23 @@ window.TrackerAudioEngine = (function() {
           }
         };
 
-        // 가속 워크렛 채널 개방 시작 신호 송신
+        // 워크렛 가속 스레드에 구동 신호 전송
         workletNode.port.postMessage({ type: 'start' });
         
-        // 워크렛에서 올라오는 리사이클 신호 추적 핸들러 부착
+        // [멈춤 현상 해결 핵심 2] 워크렛의 부팅 완료 피드백을 가로채어 안전 선적재 루프 가동
         workletNode.port.onmessage = (e) => {
-          if (e.data.type === 'recycle' && isPlaying) {
-            triggerBufferWriteFeed();
+          if (e.data.type === 'ready_for_feed' && isPlaying) {
+            console.log("%c[하드웨어 도킹] AudioWorklet 부팅 완료 승인. 재생 버퍼 연동을 개시합니다.", "color: #54ff54; font-weight: bold;");
+            if (window.triggerBufferWriteFeedGlobal) {
+              window.triggerBufferWriteFeedGlobal();
+              window.triggerBufferWriteFeedGlobal();
+            }
+          }
+          else if (e.data.type === 'recycle' && isPlaying) {
+            if (window.triggerBufferWriteFeedGlobal) window.triggerBufferWriteFeedGlobal();
           }
         };
-      } catch (err) {
-        console.error("AudioWorklet 가속 장치 컴파일 붕괴:", err);
-      }
+      } catch (err) { console.error("AudioWorklet 컴파일 에러:", err); }
     }
   }
 
@@ -126,117 +123,45 @@ window.TrackerAudioEngine = (function() {
   async function ensureEngineReady(type) {
     if (type === 'libopenmpt' && !openmptModuleInstance) {
       const factory = window.libopenmpt || libopenmpt;
-      if (!factory) throw new Error("libopenmpt 스크립트가 누락되었습니다.");
-      
-      const cachedModule = window.Module;
-      window.Module = undefined; 
-      
-      const res = factory();
-      openmptModuleInstance = (res instanceof Promise) ? await res : res;
-      if (cachedModule) window.Module = cachedModule;
+      const res = factory(); openmptModuleInstance = (res instanceof Promise) ? await res : res;
     } 
-    
     else if (type === 'adplug' && !adplugModuleInstance) {
       const factory = window.AdPlugModule || AdPlugModule;
       if (!factory) throw new Error("AdPlugModule 스크립트가 로드되지 않았습니다.");
-      
-      statusBarText.innerText = "AdLib 하드웨어 WASM 에뮬레이터 컴파일 가동...";
-      const cachedModule = window.Module;
-      window.Module = undefined;
-
+      statusBarText.innerText = "AdLib 하드웨어 WASM 에뮬레이터 초기화 중...";
+      const cachedModule = window.Module; window.Module = undefined;
       const res = typeof factory === 'function' ? factory() : factory;
       let rawModule = (res instanceof Promise) ? await res : res;
-
       let retries = 0;
       while (retries < 40) {
         const target = rawModule || window.Module || (typeof Module !== 'undefined' ? Module : null);
         if (target && typeof target._emu_init === 'function' && target.HEAPU8 && typeof target._emu_get_audio_buffer_length === 'function') {
-          adplugModuleInstance = target;
-          break;
+          adplugModuleInstance = target; break;
         }
-        await new Promise(resolve => setTimeout(resolve, 100)); 
-        retries++;
+        await new Promise(resolve => setTimeout(resolve, 100)); retries++;
       }
-
       if (cachedModule) window.Module = cachedModule;
       if (!adplugModuleInstance) throw new Error("AdPlug WASM 컴파일 지연 타임아웃");
       statusBarText.innerText = "대기";
     }
   }
-//2
   /**
-   * player-engine.js - Part 2: AudioWorklet 전용 실시간 링 버퍼 피더 및 인터페이스 마감
+   * player-engine.js - Part 2: 시그널 도킹형 적재 로더 및 인터페이스 외부 노출 리턴 마감
    */
-
-  function triggerBufferWriteFeed() {
-    if (!isPlaying || !loadedModulePtr || !queueWriter) return;
-
-    queueWriter.write((segment) => {
-      let framesRendered = segment.frameCount;
-      let trackFinished = false;
-
-      if (currentEngineType === 'libopenmpt') {
-        const bytesPerSample = 4;
-        if (!leftBufferPtr) {
-          leftBufferPtr = openmptModuleInstance._malloc(framesRendered * bytesPerSample);
-          rightBufferPtr = openmptModuleInstance._malloc(framesRendered * bytesPerSample);
-        }
-
-        const count = openmptModuleInstance._openmpt_module_read_float_stereo(
-          loadedModulePtr, SAMPLE_RATE, framesRendered, leftBufferPtr, rightBufferPtr
-        );
-
-        if (count <= 0) {
-          trackFinished = true;
-          framesRendered = 0;
-        } else {
-          framesRendered = count;
-          const wasmLeft = new Float32Array(openmptModuleInstance.HEAPF32.buffer, leftBufferPtr, framesRendered);
-          const wasmRight = new Float32Array(openmptModuleInstance.HEAPF32.buffer, rightBufferPtr, framesRendered);
-          
-          for (let i = 0; i < framesRendered; i++) {
-            segment.set(i, 0, wasmLeft[i]);
-            segment.set(i, 1, wasmRight[i]);
-          }
-        }
-      } 
-      else if (currentEngineType === 'adplug') {
-        const scale = 1 / 32768.0;
-        const finished = adplugModuleInstance._emu_compute_audio_samples() !== 0;
-        if (finished) trackFinished = true;
-
-        const bufferPtr = adplugModuleInstance._emu_get_audio_buffer();
-        const bufferLength = adplugModuleInstance._emu_get_audio_buffer_length();
-        const numSamples = bufferLength / 2; 
-        const renderCount = Math.min(framesRendered, numSamples / 2);
-
-        const runtimeShortHeap = new Int16Array(adplugModuleInstance.HEAP16.buffer, bufferPtr, numSamples);
-
-        // [문법 보정 완료] 닫히지 않고 열려있던 오른쪽 채널의 소괄호 짝을 정상 조립했습니다.
-        for (let i = 0; i < renderCount; i++) {
-          segment.set(i, 0, runtimeShortHeap[i * 2] * scale);
-          segment.set(i, 1, runtimeShortHeap[i * 2 + 1] * scale);
-        }
-        framesRendered = renderCount;
-        totalSamplesSent += renderCount;
-      }
-
-      if (trackFinished) {
-        if (loopEnabled) {
-          if (currentEngineType === 'libopenmpt') openmptModuleInstance._openmpt_module_set_position_seconds(loadedModulePtr, 0);
-          else if (currentEngineType === 'adplug') adplugModuleInstance._emu_rewind();
-          totalSamplesSent = 0;
-        } else {
-          isPlaying = false;
-          if (onTrackEndCallback) setTimeout(() => onTrackEndCallback(), 0);
-        }
-      }
-
-      return framesRendered; 
-    });
-  }
-
   return {
+    get audioCtx() { return audioCtx; },
+    get queueWriter() { return queueWriter; },
+    get currentEngineType() { return currentEngineType; },
+    get openmptModuleInstance() { return openmptModuleInstance; },
+    get adplugModuleInstance() { return adplugModuleInstance; },
+    get loadedModulePtr() { return loadedModulePtr; },
+    get SAMPLE_RATE() { return SAMPLE_RATE; },
+    get loopEnabled() { return loopEnabled; },
+    get onTrackEndCallback() { return onTrackEndCallback; },
+    
+    set totalSamplesSent(val) { totalSamplesSent = val; },
+    get totalSamplesSent() { return totalSamplesSent; },
+
     setOnTrackEnd(callback) { onTrackEndCallback = callback; },
 
     async loadTrack(musicArrayBuffer, filename, bnkArrayBuffer = null) {
@@ -252,72 +177,54 @@ window.TrackerAudioEngine = (function() {
       if (type === 'libopenmpt') {
         wasmInputBufferPtr = openmptModuleInstance._malloc(fileSize);
         openmptModuleInstance.HEAPU8.set(u8Array, wasmInputBufferPtr);
-        
         loadedModulePtr = openmptModuleInstance._openmpt_module_create_from_memory(wasmInputBufferPtr, fileSize, 0, 0, 0);
         if (!loadedModulePtr) throw new Error("OpenMPT 적재 실패");
-
         durationSeconds = openmptModuleInstance._openmpt_module_get_duration_seconds(loadedModulePtr);
       } 
       else if (type === 'adplug') {
         const result = adplugModuleInstance._emu_init(SAMPLE_RATE);
-        if (result !== 0) {
-          throw new Error(`AdPlug 에뮬레이터 초기화 실패 (에러코드: ${result})`);
-        }
-        
-        loadedModulePtr = 1; 
+        if (result !== 0) throw new Error(`AdPlug 초기화 실패: ${result}`);
+        loadedModulePtr = 1;
 
         if (bnkArrayBuffer) {
-          const bnkU8 = new Uint8Array(bnkArrayBuffer);
-          const bnkSize = bnkU8.length;
-          
-          const bnkPtr = adplugModuleInstance._malloc(bnkSize);
-          adplugModuleInstance.HEAPU8.set(bnkU8, bnkPtr);
-          
-          const bnkNamePtr = adplugModuleInstance._malloc(13);
-          adplugModuleInstance.stringToUTF8("STANDARD.BNK", bnkNamePtr, 13);
-          
+          const bnkU8 = new Uint8Array(bnkArrayBuffer); const bnkSize = bnkU8.length;
+          const bnkPtr = adplugModuleInstance._malloc(bnkSize); adplugModuleInstance.HEAPU8.set(bnkU8, bnkPtr);
+          const bnkNamePtr = adplugModuleInstance._malloc(13); adplugModuleInstance.stringToUTF8("STANDARD.BNK", bnkNamePtr, 13);
           adplugModuleInstance._emu_add_file(bnkNamePtr, bnkPtr, bnkSize);
-          adplugModuleInstance._free(bnkNamePtr);
-          adplugModuleInstance._free(bnkPtr);
+          adplugModuleInstance._free(bnkNamePtr); adplugModuleInstance._free(bnkPtr);
         }
 
         wasmInputBufferPtr = adplugModuleInstance._malloc(fileSize);
         adplugModuleInstance.HEAPU8.set(u8Array, wasmInputBufferPtr);
-
         const fileNamePtr = adplugModuleInstance._malloc(filename.length + 1);
         adplugModuleInstance.stringToUTF8(filename, fileNamePtr, filename.length + 1);
-
         const loadResult = adplugModuleInstance._emu_load_file(fileNamePtr, wasmInputBufferPtr, fileSize);
         adplugModuleInstance._free(fileNamePtr);
-
-        if (loadResult !== 0) {
-          adplugModuleInstance._emu_teardown();
-          loadedModulePtr = null;
-          throw new Error(`AdPlug 파일 디코딩 마운트 실패 (에러코드: ${loadResult})`);
-        }
+        if (loadResult !== 0) { adplugModuleInstance._emu_teardown(); loadedModulePtr = null; throw new Error("AdPlug 적재 실패"); }
 
         durationSeconds = adplugModuleInstance._emu_get_max_position() / 1000;
         totalSamplesSent = 0;
       }
 
+      // [멈춤 현상 해결 핵심 3] 성급한 선적재(triggerBufferWriteFeed)를 여기서 과감하게 완전히 제거합니다!
+      // 이제는 워크렛 노드가 구동 시작 신호('ready_for_feed')를 완벽하게 회신하는 그 순간부터 안전 재생을 개시합니다.
       isPlaying = true;
-      triggerBufferWriteFeed();
-      triggerBufferWriteFeed(); 
+      if (outputQueueNode) {
+        outputQueueNode.port.postMessage({ type: 'stop' });
+        outputQueueNode.port.postMessage({ type: 'start' });
+      }
     },
 
     play() { 
       if (loadedModulePtr) {
         isPlaying = true;
         if (outputQueueNode) outputQueueNode.port.postMessage({ type: 'start' });
-        triggerBufferWriteFeed();
       }
     },
-    
     pause() { 
       isPlaying = false;
       if (outputQueueNode) outputQueueNode.port.postMessage({ type: 'stop' });
     },
-    
     stop() {
       isPlaying = false;
       if (outputQueueNode) outputQueueNode.port.postMessage({ type: 'stop' });
@@ -333,8 +240,6 @@ window.TrackerAudioEngine = (function() {
       if (currentEngineType === 'libopenmpt' && openmptModuleInstance) {
         if (loadedModulePtr) openmptModuleInstance._openmpt_module_destroy(loadedModulePtr);
         if (wasmInputBufferPtr) openmptModuleInstance._free(wasmInputBufferPtr);
-        if (leftBufferPtr) { openmptModuleInstance._free(leftBufferPtr); leftBufferPtr = null; }
-        if (rightBufferPtr) { openmptModuleInstance._free(rightBufferPtr); rightBufferPtr = null; }
       } else if (currentEngineType === 'adplug' && adplugModuleInstance) {
         if (loadedModulePtr) adplugModuleInstance._emu_teardown();
         if (wasmInputBufferPtr) adplugModuleInstance._free(wasmInputBufferPtr);
@@ -342,25 +247,15 @@ window.TrackerAudioEngine = (function() {
       loadedModulePtr = null; wasmInputBufferPtr = 0; durationSeconds = 0; currentEngineType = null;
     },
 
-    setMasterVolume(vol) {
-      if (gainNode) gainNode.gain.value = vol / 100;
-    },
-    
-    setLoopEnabled(enabled) { 
-      loopEnabled = enabled; 
-      if (currentEngineType === 'adplug' && adplugModuleInstance) {
-        adplugModuleInstance._emu_set_loop_enabled(enabled ? 1 : 0);
-      }
-    },
-    
+    setMasterVolume(vol) { if (gainNode) gainNode.gain.value = vol / 100; },
+    setLoopEnabled(enabled) { loopEnabled = enabled; if (currentEngineType === 'adplug' && adplugModuleInstance) adplugModuleInstance._emu_set_loop_enabled(enabled ? 1 : 0); },
     getAnalyserNode() { return analyserNode; },
 
     getPlaybackState() {
       if (!loadedModulePtr) return null;
       let currentTimeMs = 0;
       if (currentEngineType === 'libopenmpt') {
-        if (!outputQueueNode) return null;
-        currentTimeMs = adplugModuleInstance ? (totalSamplesSent / SAMPLE_RATE) * 1000 : 0; 
+        currentTimeMs = (totalSamplesSent / SAMPLE_RATE) * 1000;
       } else if (currentEngineType === 'adplug') {
         currentTimeMs = adplugModuleInstance._emu_get_current_position();
       }
