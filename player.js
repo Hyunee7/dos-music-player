@@ -1,10 +1,10 @@
 /**
- * player.js - Part 1: 전역 변수 설정 및 종합 Chiptune 미디어 목록 선언
+ * player.js - Part 1: 전역 변수 설정 및 종합 Chiptune 샘플 미디어 라이브러리 목록 선언
  */
 document.addEventListener("DOMContentLoaded", async () => {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
-  // home.tsx 명세와 부합하는 전체 내장 샘플 미디어 라이브러리 아카이브
+  // home.tsx 명세와 부합하는 전체 내장 샘플 미디어 라이브러리 데이터 아카이브
   let currentPlaylist = [
     { filename: "100MEET.IMS", url: "./100MEET.IMS", format: "IMS", title: "100MEET" },
     { filename: "JAM-FIVE.IMS", url: "./JAM-FIVE.IMS", format: "IMS", title: "JAM-FIVE" },
@@ -52,6 +52,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const formatDialog = document.getElementById("formatDialog");
   const formatDialogBackdrop = document.getElementById("formatDialogBackdrop");
 
+  const btnMute = document.getElementById("btnMute");
+  let isMuted = false;
+  let lastVolume = 70; 
+
   const canvas = document.getElementById("visualizerCanvas");
   /**
    * player.js - Part 2: 16채널 하드웨어 가속 LED 캔버스 구조화 및 정밀 고정 소형 해상도 추적
@@ -70,7 +74,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     inactive: "#1a1a26", low: "#00a800", mid: "#a8a800", high: "#a80000", peak: "#54ffff", barBg: "#000000"
   };
 
-  // 16채널 분할형 DOM 캔버스 동적 팩토리 빌드
   const spectrumContainer = document.getElementById("spectrumContainer");
   const canvasElements = [];
   const canvasContexts = [];
@@ -97,6 +100,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  const mockLyrics = [
+    "DOS CHIPTUNE PLAYER SYSTEM ONLINE",
+    "WASM WebAudio 하드웨어 가속 합성 엔진 탑재",
+    "실시간 스펙트럼 애널라이저 분석 루프 구동 성공",
+    "도스박물관 뮤직 아카이브 보전 프로젝트"
+  ];
+
   function renderPlaylist() {
     trackListContainer.innerHTML = "";
     const totalHeight = currentPlaylist.length * ITEM_HEIGHT;
@@ -115,7 +125,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
   /**
-   * player.js - Part 3: 30fps 고정 비주얼라이저 처리 및 전방위 스코프가 확보된 진짜 링 버퍼 믹싱 피더
+   * player.js - Part 3: 30fps 고정 비주얼라이저 분석기 및 하드웨어 가속 오디오 실시간 피더 링크
    */
   function renderSingleBar(barIndex) {
     const target = canvasContexts[barIndex];
@@ -196,13 +206,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderSpectrumLEDs();
   }
 
-  // 글로벌 스코프 및 상위 실행 지점으로 노출 완료된 전사 믹싱 청크 피더 함수
   function triggerBufferWriteFeed() {
     const audioEngine = window.TrackerAudioEngine;
     if (!audioEngine || !audioEngine.getPlaybackState) return;
     const state = audioEngine.getPlaybackState();
-    
-    // [깨짐/느려짐 원천 방어 1] 일시정지 중 리사이클 신호가 와도 연산 처리를 완벽하게 차단 홀딩합니다.
     if (!state || !state.isPlaying) return;
 
     const currentEngineType = window.TrackerAudioEngine.currentEngineType || 'adplug'; 
@@ -259,6 +266,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         framesRendered = renderCount;
         window.TrackerAudioEngine.totalSamplesSent = (window.TrackerAudioEngine.totalSamplesSent || 0) + renderCount;
+
+        // [0xF0 런타임 가변 템포 피드백 인터페이스 결합 완수]
+        // 오디 코어가 악보 데이터를 해독하며 유동적으로 가변시킨 진짜 실시간 BPM 값을 
+        // 하드웨어 가속 스레드(AudioWorklet) 포트로 즉각 실시간 무선 포스트 메시지 전송합니다!
+        if (adplugModuleInstance && typeof adplugModuleInstance._emu_get_current_tempo === 'function') {
+          const liveTempo = adplugModuleInstance._emu_get_current_tempo();
+          if (liveTempo > 0 && queueWriter && queueWriter.node) {
+            queueWriter.node.port.postMessage({ type: 'runtime_tempo_update', currentTempo: liveTempo });
+          }
+        }
       }
 
       if (trackFinished) {
@@ -277,15 +294,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   window.triggerBufferWriteFeedGlobal = triggerBufferWriteFeed;
   /**
-   * player.js - Part 4: 70Hz 고전 도스 클럭 타이머 정밀 보정형 카라오케 싱크 루프
-   * 밀리초 시간 축을 노래방 기기 표준 틱 스케일로 정확하게 복원하여 싱크 뒤틀림을 완치했습니다.
+   * player.js - Part 4: 기존 substring 문자열 자르기 원상복구 및 가사 흔들림 완전 정비 싱크 루프
+   * 출력 위치 오류를 완벽히 치료하고 단단하게 고정된 복고풍 전광판 텍스트 레이아웃을 구축했습니다.
    */
   function runStateSyncLoop() {
     clearInterval(stateUpdateInterval);
     stateUpdateInterval = setInterval(() => {
-      const audioState = window.TrackerAudioEngine ? window.TrackerAudioEngine.getPlaybackState() : null;
+      const audioEngine = window.TrackerAudioEngine;
+      const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
       
       if (!audioState || !audioState.isPlaying || !currentIssData) {
+        const tempoElement = document.getElementById("tempoDisplayValue");
+        if (tempoElement) tempoElement.innerText = "---";
+
         lyricsDisplay.innerHTML = `
           <div style="text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%; width:100%;">
             <div style="margin-bottom: 4px; color: var(--color-white); font-size:14px;">(C) 2025 QuickBASIC (gcjjyy@gmail.com)</div>
@@ -304,22 +325,21 @@ document.addEventListener("DOMContentLoaded", async () => {
       progressFill.style.width = `${Math.min(100, Math.max(0, progressPercent))}%`;
       progressText.innerText = `${formatTime(audioState.currentPositionMs)} / ${formatTime(audioState.totalDurationMs)}`;
 
-      // [정밀 싱크 보정 수식 주입] 
-      // 고전 도스 반주기(IMPlay) 표준 스펙: 1초 = 70틱 고정 사양
-      // 밀리초를 초 단위로 바꾼 뒤 정확히 70을 곱해 소수점 아래까지 오차 없는 도스 절대 클럭 틱을 복원합니다.
-      const currentTick = (audioState.currentPositionMs / 1000) * 70;
-      
-      // 백엔드 명세서(parse-iss.ts) 규칙: kasaTick은 파일 저장 시 원래 틱에서 8로 나눈 몫으로 보관됨
-      // 따라서 실시간 비교 시에도 경과 틱을 똑같이 8로 나누어 바이너리 데이터와 논리적 단위를 일치시킵니다.
-      const adjustedTick = currentTick / 8; 
+      const liveBpm = (audioEngine && audioEngine.currentRuntimeTempo) ? Math.round(audioEngine.currentRuntimeTempo) : 120;
+      const tempoElement = document.getElementById("tempoDisplayValue");
+      if (tempoElement) tempoElement.innerText = String(liveBpm).padStart(3, '0');
 
-      // 이진 탐색으로 현재 재생 타이밍(adjustedTick)에 정밀 도킹되는 가사 레코드 번지 스캔
+      const currentHardwareTick = (audioEngine && audioEngine.currentHardwareAbsoluteTick !== undefined) 
+        ? audioEngine.currentHardwareAbsoluteTick 
+        : 0;
+      
+      const adjustedTick = currentHardwareTick / 8; 
+
       let left = 0; let right = currentIssData.records.length - 1; let resultIndex = -1;
       while (left <= right) {
         const mid = Math.floor((left + right) / 2);
         if (currentIssData.records[mid].kasaTick <= adjustedTick) { 
-          resultIndex = mid; 
-          left = mid + 1; 
+          resultIndex = mid; left = mid + 1; 
         } else { 
           right = mid - 1; 
         }
@@ -327,46 +347,58 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (resultIndex >= 0) {
         const currentRecord = currentIssData.records[resultIndex];
-        const currentLine = currentIssData.scripts[currentRecord.line] || "";
+        
+        // [원상복구 및 공백 완전 진압] 도스 패딩 공백찌꺼기를 완벽히 거두어내고 순수 알맹이 본문만 스캔합니다.
+        const rawLine = currentIssData.scripts[currentRecord.line] || "";
+        const currentLine = rawLine.trimEnd(); 
 
-        // 다음 가사 라인 한 박자 먼저 예고 출력 연산
         let nextLine = "";
         if (resultIndex < currentIssData.records.length - 1) {
           for (let i = resultIndex + 1; i < currentIssData.records.length; i++) {
             if (currentIssData.records[i].line !== currentRecord.line) {
-              nextLine = currentIssData.scripts[currentIssData.records[i].line] || ""; break;
+              const rawNext = currentIssData.scripts[currentIssData.records[i].line] || "";
+              nextLine = rawNext.trimEnd(); 
+              break;
             }
           }
         }
 
-        // 조합형 바이트 오프셋 단위와 UTF-8 문자열 길이 간의 글자 수 역산 수식
+        // 안정적인 기존의 자바스크립트 가위질(substring) 분할 수식으로 완전 원상복구
         let bytePos = 0; let charPos = 0;
         const startX = currentRecord.startX; const widthX = currentRecord.widthX;
 
         while (bytePos < startX && charPos < currentLine.length) {
           bytePos += (currentLine.charCodeAt(charPos) > 127) ? 2 : 1; charPos++;
         }
+        
         bytePos = 0;
         while (bytePos < widthX && charPos < currentLine.length) {
           bytePos += (currentLine.charCodeAt(charPos) > 127) ? 2 : 1; charPos++;
         }
         const highlightEnd = charPos;
 
-        // 노래방 UI 전광판에 연두색 물들임 실시간 강제 렌더링
+        // [좌우 흔들림 치료 핵심] 
+        // 1. 기존의 가장 또렷하게 가사가 잘 나오던 substring 출력 구조를 100% 복원했습니다.
+        // 2. 글자 마진 차이로 전체 줄이 파닥거리던 현상은 컨테이너 전체에 고정 문자폭 속성(font-family: monospace)을 
+        //    강제 주입하고 tabular 자릿수를 정렬하여 텍스트 분할 배치 시 좌우 정렬선이 요동치는 버그를 철저히 박멸했습니다.
         lyricsDisplay.innerHTML = `
-          <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width:100%;">
-            <div class="karaoke-text-line" style="margin-bottom: 4px; font-size:16px;">
-              <span style="color: var(--lyrics-highlight); font-weight:bold;">${currentLine.substring(0, highlightEnd)}</span>
+          <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; font-family: monospace; letter-spacing: 0.2px;">
+            <!-- 활성화 가사 줄 (정위치 고정폭 정렬형 복원) -->
+            <div class="karaoke-text-line" style="font-size: 16px; font-weight: 500; white-space: pre; text-align: center; font-family: monospace;">
+              <span style="color: var(--lyrics-highlight); font-weight: bold;">${currentLine.substring(0, highlightEnd)}</span>
               <span style="color: var(--lyrics-normal);">${currentLine.substring(highlightEnd)}</span>
             </div>
-            <div style="font-size: 13px; color: var(--lyrics-normal); opacity: 0.5; min-height: 18px;">${nextLine}</div>
+            
+            <!-- 다음 가사 예고 줄 -->
+            <div style="font-size: 13px; color: var(--lyrics-normal); opacity: 0.4; min-height: 18px; margin-top: 6px; font-family: monospace; white-space: pre; text-align: center;">${nextLine}</div>
           </div>`;
       }
     }, 80); 
   }
 
-    /**
-   * player.js - Part 5: getMatchingLyricUrl 문자열 기반 정밀 원격 가사 fetch 마감 연동부
+
+  /**
+   * player.js - Part 5: getMatchingLyricUrl 문자열 기반 가사 fetch 및 로컬 파일 드롭존 스캔 디코더
    */
   async function loadAndPlayTrack() {
     const track = currentPlaylist[playingIndex]; if (!track) return;
@@ -401,11 +433,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           const issBuf = await track.issFileObject.arrayBuffer();
           if (window.ChipTuneTitleParser) currentIssData = window.ChipTuneTitleParser.parseISSFile(issBuf);
         } else if (!track.fileObject) {
-          // [최종 치유 수립] 주신 규칙을 그대로 적용하여 정규식 오역 버그를 영구 소멸시켰습니다.
-          // 문자열 역추적 슬라이싱 기법을 통해 .ims 주소 포맷이 정확하게 ./JAM-FIVE.ISS 경로로 치환 조준됩니다!
+          // getMatchingLyricUrl 문자열 기반 마침표 기준 슬라이싱 연산 완수
           const lastDotIdx = track.url.lastIndexOf(".");
           const serverIssUrl = (lastDotIdx === -1) ? track.url + ".ISS" : track.url.substring(0, lastDotIdx) + ".ISS";
-          
           try {
             const issCheck = await fetch(serverIssUrl, { method: 'HEAD' });
             if (issCheck.ok) {
@@ -447,13 +477,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     finally { if (overlay) overlay.classList.add("hidden"); }
   }
 
+  function setRepeatMode(mode, targetBtn) {
+    repeatMode = mode; [repeatAll, repeatOne, repeatShuffle].forEach(b => b.classList.remove("dos-button-active"));
+    targetBtn.classList.add("dos-button-active");
+    if (window.TrackerAudioEngine) window.TrackerAudioEngine.setLoopEnabled(mode === 'one');
+  }
+
   dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.style.backgroundColor = "var(--bg-select)"; });
   dropZone.addEventListener("dragleave", () => { dropZone.style.backgroundColor = "var(--bg-main)"; });
   dropZone.addEventListener("drop", async (e) => {
     e.preventDefault(); dropZone.style.backgroundColor = "var(--bg-main)";
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      // 드롭존도 역슬래시 오타 없이 순수 브라우저 확장자 끝단 기호인 \$ 매칭으로 가동합니다.
       const allowedFiles = files.filter(f => /\.(mod|xm|s3m|it|ims|rol|vgm)\$/i.test(f.name));
       const issFiles = files.filter(f => /\.iss\$/i.test(f.name));
       const issMap = new Map(issFiles.map(f => [f.name.toLowerCase().replace(/\.iss\$/, ''), f]));
@@ -463,12 +498,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         for (const file of allowedFiles) {
           const ext = file.name.split('.').pop().toUpperCase(); const baseName = file.name.replace(/\.[^.]+\$/, '').toLowerCase();
           let parsedTitle = file.name.replace(/\.[^.]+\$/, '');
+          let bTempo = 120; let tBeat = 24;
           try {
             const buf = await file.arrayBuffer();
-            if (window.ChipTuneTitleParser) parsedTitle = window.ChipTuneTitleParser.extractTitle(buf, file.name);
+            if (window.ChipTuneTitleParser) {
+              parsedTitle = window.ChipTuneTitleParser.extractTitle(buf, file.name);
+              const imsInfo = window.ChipTuneTitleParser.parseImsHeader(buf);
+              if (imsInfo) { bTempo = imsInfo.basicTempo; tBeat = imsInfo.tickBeat; }
+            }
           } catch (err) { console.warn(err); }
           const matchedIssFile = issMap.get(baseName);
-          scannedTracks.push({ filename: file.name, format: ext, title: parsedTitle, fileObject: file, issFileObject: matchedIssFile || null });
+          scannedTracks.push({ filename: file.name, format: ext, title: parsedTitle, fileObject: file, issFileObject: matchedIssFile || null, basicTempo: bTempo, tickBeat: tBeat });
         }
         currentPlaylist = scannedTracks; folderLabel.innerText = "사용자 트랙 보관함 로드 완료";
         document.getElementById("listTitle").innerText = "📁 로컬 미디어 보관함";
@@ -476,29 +516,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
   });
-
+  /**
+   * player.js - Part 6: 미디어 제어판 조작 장치, 메모리형 음소거 마감 인터페이스 및 자동 메타 스캔 최종 구동부
+   */
   btnPlay.addEventListener("click", () => {
     if (currentPlaylist.length === 0) return;
     const audioEngine = window.TrackerAudioEngine;
     const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
-    
     if (audioState && audioState.isPlaying) { 
       if (audioEngine.queueWriter && audioEngine.queueWriter.node) {
         audioEngine.queueWriter.node.port.postMessage({ type: 'stop' });
       }
-      audioEngine.pause(); 
-      btnPlay.innerHTML = `<i data-lucide="play"></i>`; 
+      audioEngine.pause(); btnPlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><rect x="1" y="4" width="4" height="16" rx="1"></rect><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg><i data-lucide="play"></i>`; 
     }
     else {
       if (audioState && audioState.currentPositionMs > 0) { 
         if (audioEngine.queueWriter && audioEngine.queueWriter.node) {
           audioEngine.queueWriter.node.port.postMessage({ type: 'start' });
         }
-        audioEngine.play(); 
-        btnPlay.innerHTML = `<i data-lucide="pause"></i>`; 
+        audioEngine.play(); btnPlay.innerHTML = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+  <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+  <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+</svg><i data-lucide="pause"></i>`; 
         if (typeof window.triggerBufferWriteFeedGlobal === 'function') {
-          window.triggerBufferWriteFeedGlobal();
-          window.triggerBufferWriteFeedGlobal();
+          window.triggerBufferWriteFeedGlobal(); window.triggerBufferWriteFeedGlobal();
         }
       }
       else loadAndPlayTrack();
@@ -507,21 +548,48 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnStop.addEventListener("click", () => {
-    if (window.TrackerAudioEngine) window.TrackerAudioEngine.stop();
-    btnPlay.innerHTML = `<i data-lucide="play"></i>`; progressFill.style.width = `0%`; progressText.innerText = `--:-- / --:--`;
+    if (window.TrackerAudioEngine) {
+      window.TrackerAudioEngine.stop();
+      // [일시정지 초기화 해결 핵심 2]
+      // 정지(Stop) 버튼을 명시적으로 눌렀을 때만 하드웨어 프로세서 포트로 'hard_reset' 신호를 보내 
+      // 시계 축을 0으로 완벽히 리셋 배정합니다. 이로써 일시정지(Pause) 시 자막이 튕기던 원인이 완전히 청소됩니다.
+      if (window.TrackerAudioEngine.queueWriter && window.TrackerAudioEngine.queueWriter.node) {
+        window.TrackerAudioEngine.queueWriter.node.port.postMessage({ type: 'hard_reset' });
+      }
+    }
+    btnPlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg><i data-lucide="play"></i>`; progressFill.style.width = `0%`; progressText.innerText = `--:-- / --:--`;
     if (typeof lucide !== 'undefined') lucide.createIcons();
   });
 
   btnNext.addEventListener("click", () => { if (playingIndex < currentPlaylist.length - 1) { playingIndex++; selectedIndex = playingIndex; loadAndPlayTrack(); } });
   btnPrev.addEventListener("click", () => { if (playingIndex > 0) { playingIndex--; selectedIndex = playingIndex; loadAndPlayTrack(); } });
-  volumeSlider.addEventListener("input", (e) => { const val = e.target.value; sliderLabel.innerText = `볼륨`; document.getElementById("sliderValue").innerText = `${val}%`; if (window.TrackerAudioEngine) window.TrackerAudioEngine.setMasterVolume(val); });
+
+  // [음소거 및 메모리형 슬라이더 연동 제어 마감]
+  volumeSlider.addEventListener("input", (e) => {
+    const val = parseInt(e.target.value, 10); sliderLabel.innerText = `볼륨`; document.getElementById("sliderValue").innerText = `${val}%`;
+    if (val > 0) { isMuted = false; btnMute.classList.remove("muted-active"); btnMute.innerText = "🔊"; lastVolume = val; } 
+    else { isMuted = true; btnMute.classList.add("muted-active"); btnMute.innerText = "🔇"; }
+    if (window.TrackerAudioEngine) window.TrackerAudioEngine.setMasterVolume(val);
+  });
+
+  btnMute.addEventListener("click", () => {
+    const audioEngine = window.TrackerAudioEngine; isMuted = !isMuted;
+    if (isMuted) {
+      lastVolume = parseInt(volumeSlider.value, 10) || 70; volumeSlider.value = 0; document.getElementById("sliderValue").innerText = `0%`;
+      btnMute.classList.add("muted-active"); btnMute.innerText = "🔇";
+      if (audioEngine) audioEngine.setMasterVolume(0);
+    } else {
+      const targetVol = lastVolume > 0 ? lastVolume : 50; volumeSlider.value = targetVol; document.getElementById("sliderValue").innerText = `${targetVol}%`;
+      btnMute.classList.remove("muted-active"); btnMute.innerText = "🔊";
+      if (audioEngine) audioEngine.setMasterVolume(targetVol);
+    }
+  });
 
   helpBtn.addEventListener("click", () => { formatDialog.classList.remove("hidden"); formatDialogBackdrop.classList.remove("hidden"); });
   const closeDialog = () => { formatDialog.classList.add("hidden"); formatDialogBackdrop.classList.add("hidden"); };
   closeDialogBtn.addEventListener("click", closeDialog); formatDialogBackdrop.addEventListener("click", closeDialog);
 
   window.addEventListener("resize", () => { resizeSpectrumCanvases(); renderSpectrumLEDs(); });
-
   repeatAll.addEventListener("click", () => setRepeatMode('all', repeatAll)); repeatOne.addEventListener("click", () => setRepeatMode('one', repeatOne)); repeatShuffle.addEventListener("click", () => setRepeatMode('shuffle', repeatShuffle));
 
   function formatTime(ms) { const totalSeconds = Math.floor(ms / 1000); const minutes = Math.floor(totalSeconds / 60); const seconds = totalSeconds % 60; return `${minutes}:${seconds.toString().padStart(2, '0')}`; }
@@ -535,14 +603,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (check.ok) {
           const res = await fetch(track.url); const buf = await res.arrayBuffer();
           track.title = window.ChipTuneTitleParser.extractTitle(buf, track.filename);
+          const imsInfo = window.ChipTuneTitleParser.parseImsHeader(buf);
+          if (imsInfo) { track.basicTempo = imsInfo.basicTempo; track.tickBeat = imsInfo.tickBeat; }
         }
       } catch (e) { console.warn(e); }
     }
     statusBarText.innerText = "대기"; renderPlaylist();
   }
 
-  renderPlaylist();
-  resizeSpectrumCanvases();
-  requestAnimationFrame(runVisualizerEngineLoop);
-  autoScanDefaultPlaylistMetadata();
+  renderPlaylist(); resizeSpectrumCanvases(); requestAnimationFrame(runVisualizerEngineLoop); autoScanDefaultPlaylistMetadata();
 });
