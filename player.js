@@ -464,7 +464,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       await audioEngine.loadTrack(musicArrayBuffer, track.filename, bnkArrayBuffer);
       audioEngine.play();
-      btnPlay.innerHTML = `<i data-lucide="pause"></i>`;
+      btnPlay.innerHTML = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+  <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+  <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+</svg><i data-lucide="pause"></i>`;
       btnStop.removeAttribute("disabled"); btnPrev.removeAttribute("disabled"); btnNext.removeAttribute("disabled");
       statusBarText.innerText = (currentIssData && currentIssData.singer) ? `재생중 - [가수: ${currentIssData.singer}] ${track.title}` : `재생중 - ${track.title}`;
       if (typeof lucide !== 'undefined') lucide.createIcons();

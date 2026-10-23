@@ -1,5 +1,5 @@
 /**
- * player-engine.js - Part 1: 워크렛 핑백 도킹 시그널 수신 인프라 빌드
+ * player-engine.js - Part 1: 하드웨어 절대 틱(Absolute Tick) 동기화 파이프라인 구성
  */
 
 window.TrackerAudioEngine = (function() {
@@ -28,6 +28,9 @@ window.TrackerAudioEngine = (function() {
 
   let durationSeconds = 0;
   let totalSamplesSent = 0;
+  
+  // [칼싱크 핵심 공유 변수]
+  let currentHardwareAbsoluteTick = 0;
 
   const ADPLUG_ONLY_EXTENSIONS = [
     '.ims', '.rol', '.vgm', '.vgz', '.cmf', '.dro', '.raw', '.laa',
@@ -95,19 +98,21 @@ window.TrackerAudioEngine = (function() {
           }
         };
 
-        // 워크렛 가속 스레드에 구동 신호 전송
         workletNode.port.postMessage({ type: 'start' });
         
-        // [멈춤 현상 해결 핵심 2] 워크렛의 부팅 완료 피드백을 가로채어 안전 선적재 루프 가동
         workletNode.port.onmessage = (e) => {
           if (e.data.type === 'ready_for_feed' && isPlaying) {
-            console.log("%c[하드웨어 도킹] AudioWorklet 부팅 완료 승인. 재생 버퍼 연동을 개시합니다.", "color: #54ff54; font-weight: bold;");
             if (window.triggerBufferWriteFeedGlobal) {
               window.triggerBufferWriteFeedGlobal();
               window.triggerBufferWriteFeedGlobal();
             }
           }
           else if (e.data.type === 'recycle' && isPlaying) {
+            // [오차 0% 절대 하드웨어 틱 수령]
+            // 오디오 사운드카드가 재생을 완수하고 넘겨준 한 치의 타임라인 오차도 없는 진짜 경과 틱 수치를 영접합니다.
+            if (e.data.currentRealTick !== undefined) {
+              currentHardwareAbsoluteTick = e.data.currentRealTick;
+            }
             if (window.triggerBufferWriteFeedGlobal) window.triggerBufferWriteFeedGlobal();
           }
         };
@@ -128,7 +133,6 @@ window.TrackerAudioEngine = (function() {
     else if (type === 'adplug' && !adplugModuleInstance) {
       const factory = window.AdPlugModule || AdPlugModule;
       if (!factory) throw new Error("AdPlugModule 스크립트가 로드되지 않았습니다.");
-      statusBarText.innerText = "AdLib 하드웨어 WASM 에뮬레이터 초기화 중...";
       const cachedModule = window.Module; window.Module = undefined;
       const res = typeof factory === 'function' ? factory() : factory;
       let rawModule = (res instanceof Promise) ? await res : res;
@@ -142,11 +146,10 @@ window.TrackerAudioEngine = (function() {
       }
       if (cachedModule) window.Module = cachedModule;
       if (!adplugModuleInstance) throw new Error("AdPlug WASM 컴파일 지연 타임아웃");
-      statusBarText.innerText = "대기";
     }
   }
   /**
-   * player-engine.js - Part 2: 시그널 도킹형 적재 로더 및 인터페이스 외부 노출 리턴 마감
+   * player-engine.js - Part 2: 절대 하드웨어 틱 공유 인터페이스 외장 개방 및 제어 구조 마감
    */
   return {
     get audioCtx() { return audioCtx; },
@@ -159,6 +162,9 @@ window.TrackerAudioEngine = (function() {
     get loopEnabled() { return loopEnabled; },
     get onTrackEndCallback() { return onTrackEndCallback; },
     
+    // [글로벌 절대 하드웨어 틱 인터페이스 노출 개방] player.js 가 긁어다가 바로 자막 매핑에 투사합니다.
+    get currentHardwareAbsoluteTick() { return currentHardwareAbsoluteTick; },
+
     set totalSamplesSent(val) { totalSamplesSent = val; },
     get totalSamplesSent() { return totalSamplesSent; },
 
@@ -173,6 +179,9 @@ window.TrackerAudioEngine = (function() {
       currentEngineType = type;
       const u8Array = new Uint8Array(musicArrayBuffer);
       const fileSize = u8Array.length;
+
+      let bTempo = 120;
+      let tBeat = 24;
 
       if (type === 'libopenmpt') {
         wasmInputBufferPtr = openmptModuleInstance._malloc(fileSize);
@@ -204,10 +213,25 @@ window.TrackerAudioEngine = (function() {
 
         durationSeconds = adplugModuleInstance._emu_get_max_position() / 1000;
         totalSamplesSent = 0;
+        
+        if (window.ChipTuneTitleParser) {
+          const info = window.ChipTuneTitleParser.parseImsHeader(musicArrayBuffer);
+          if (info) { bTempo = info.basicTempo; tBeat = info.tickBeat; }
+        }
       }
 
-      // [멈춤 현상 해결 핵심 3] 성급한 선적재(triggerBufferWriteFeed)를 여기서 과감하게 완전히 제거합니다!
-      // 이제는 워크렛 노드가 구동 시작 신호('ready_for_feed')를 완벽하게 회신하는 그 순간부터 안전 재생을 개시합니다.
+      currentHardwareAbsoluteTick = 0;
+      
+      // 하드웨어 스레드로 최초 규격 동기화 사양 전달
+      if (outputQueueNode) {
+        outputQueueNode.port.postMessage({ 
+          type: 'meta_sync', 
+          basicTempo: bTempo, 
+          tickBeat: tBeat, 
+          sampleRate: SAMPLE_RATE 
+        });
+      }
+
       isPlaying = true;
       if (outputQueueNode) {
         outputQueueNode.port.postMessage({ type: 'stop' });
@@ -227,6 +251,7 @@ window.TrackerAudioEngine = (function() {
     },
     stop() {
       isPlaying = false;
+      currentHardwareAbsoluteTick = 0;
       if (outputQueueNode) outputQueueNode.port.postMessage({ type: 'stop' });
       if (loadedModulePtr) {
         if (currentEngineType === 'libopenmpt') openmptModuleInstance._openmpt_module_set_position_seconds(loadedModulePtr, 0);

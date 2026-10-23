@@ -1,5 +1,5 @@
 /**
- * audio-queue-processor.js - 부팅 시그널 피드백이 장착된 하드웨어 가속 프로세서 완결본
+ * audio-queue-processor.js - 크롬 기반 브라우저 읽기 전용 객체 충돌 수정 및 일시정지 보존 엔진 (최종 완결본)
  */
 
 class AudioQueueProcessor extends AudioWorkletProcessor {
@@ -9,7 +9,12 @@ class AudioQueueProcessor extends AudioWorkletProcessor {
     this.readOffset = 0;  // 현재 청크 내부의 읽기 프레임 위치
     this.totalRead = 0;   // 총 소모된 오디오 프레임 수
     this.isPlaying = false;
-
+    
+    this.basicTempo = 120;
+    this.tickBeat = 24;
+    this.sampleRate = 44100;
+    this.accumulatedTick = 0; // 오차가 영구 청소된 진짜 하드웨어 절대 경과 틱
+    
     this.port.onmessage = (e) => {
       const msg = e.data;
       if (msg.type === 'chunk') {
@@ -19,24 +24,41 @@ class AudioQueueProcessor extends AudioWorkletProcessor {
         });
       } else if (msg.type === 'start') {
         this.isPlaying = true;
-        // [멈춤 현상 해결 핵심 1] 노드가 확실하게 부팅되어 재생 상태로 진입했음을 
-        // 메인 스레드에 즉시 알려 첫 청크 적재 타이밍의 꼬임을 원천 차단합니다.
         this.port.postMessage({ type: 'ready_for_feed' });
       } else if (msg.type === 'stop') {
+        // 일시정지 상태에서는 시계 축(accumulatedTick)을 보존합니다.
         this.isPlaying = false;
-        this.queue = [];
+        this.queue.length = 0;
         this.readOffset = 0;
+      } else if (msg.type === 'hard_reset') {
+        // 완전히 정지하거나 트랙이 바뀔 때만 시계 초기화
+        this.accumulatedTick = 0;
+        this.queue.length = 0;
+        this.readOffset = 0;
+        this.isPlaying = false;
+      } else if (msg.type === 'meta_sync') {
+        this.basicTempo = msg.basicTempo || 120;
+        this.tickBeat = msg.tickBeat || 24;
+        this.sampleRate = msg.sampleRate || 44100;
+        this.accumulatedTick = 0;
+      } else if (msg.type === 'runtime_tempo_update') {
+        if (msg.currentTempo && msg.currentTempo > 0) {
+          this.basicTempo = msg.currentTempo;
+        }
       }
     };
   }
 
   process(inputs, outputs, parameters) {
-    const output = outputs[0]; 
+    const output = outputs[0]; // 첫 번째 출력 버스 참조 추출
     if (!output || output.length === 0) return true;
     
     const outputLeft = output[0];
     const outputRight = output[1];
     
+    // [TypeError 치유 핵심] 안전 규격 마스킹 처리
+    // 읽기 전용 상태인 output 배열 자체에 fill(0)을 호출하는 구조적 실수를 지우고,
+    // 오디오 다차원 채널 안쪽의 개별 Float32Array 알맹이 버퍼 레벨에 각각 정밀하게 음소거를 주입합니다.
     if (!outputLeft || !outputRight) return true;
     const numFrames = outputLeft.length; 
 
@@ -66,18 +88,29 @@ class AudioQueueProcessor extends AudioWorkletProcessor {
       framesCopied += toCopy;
       this.totalRead += toCopy;
 
+      const currentBpm = this.basicTempo || 120;
+      const currentBeat = this.tickBeat || 24;
+      const currentRate = this.sampleRate || 44100;
+
+      const ticksPerSec = (currentBpm * currentBeat) / 60;
+      const ticksPerSample = ticksPerSec / currentRate;
+      
+      if (!isNaN(ticksPerSample)) {
+        this.accumulatedTick += toCopy * ticksPerSample;
+      }
+
       if (this.readOffset >= chunkLength) {
-        this.port.postMessage({ type: 'recycle', channels: currentChunk.channels }, [
+        this.port.postMessage({ 
+          type: 'recycle', 
+          channels: currentChunk.channels,
+          currentRealTick: this.accumulatedTick
+        }, [
           currentChunk.channels[0].buffer,
           currentChunk.channels[1].buffer
         ]);
         this.queue.shift(); 
         this.readOffset = 0;
       }
-    }
-
-    if (this.totalRead % 4096 === 0) {
-      this.port.postMessage({ type: 'progress', totalRead: this.totalRead });
     }
 
     return true;

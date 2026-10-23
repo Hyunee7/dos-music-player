@@ -347,3 +347,47 @@ body {
   letter-spacing: 1px;
   line-height: 1.6;
 }
+/* 음소거 제어 토글용 복고풍 컴포넌트 스펙 */
+.dos-button-control {
+  background-color: var(--bg-main);
+  border: 2px solid;
+  border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+  color: var(--color-white);
+  font-family: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dos-button-control:active, 
+.dos-button-control.muted-active {
+  border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+  background-color: var(--bg-select);
+  color: var(--color-red); /* 음소거 시 강렬한 경고 전사 가시화 */
+}
+/* ═══════════════════════════════════════════════════════════════
+   DOS HARDWARE REALTIME TEMPO METER COMPONENT
+   ═══════════════════════════════════════════════════════════════ */
+.dos-tempo-meter {
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--color-gray);
+  letter-spacing: 1px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 실시간 템포 형광 빛무리에 대한 도트 감성 텍스트 섀도우 */
+.tempo-digital-glow {
+  color: #54ff54; /* 칩튠 전광판 특유의 레디컬 라이트 그린 */
+  text-shadow: 0 0 4px rgba(84, 255, 84, 0.8);
+  font-variant-numeric: tabular-nums; /* 자릿수 고정으로 글자 떨림 방지 */
+  background-color: #051a05;
+  padding: 0px 4px;
+  border: 1px solid #113a11;
+  border-radius: 1px;
+}
