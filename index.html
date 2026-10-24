@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DOS 음악 플레이어 (IMS Player)</title>
   <link rel="stylesheet" type="text/css" href="./style.css">
-  <script src="https://unpkg.com"></script>
 </head>
 <body>
 
@@ -102,8 +101,15 @@
         <div class="dos-panel raised flex-shrink-0">
           <div class="dos-panel-content">
             <div class="dos-progress-bar" style="margin-bottom: 8px;">
-              <div id="progressFill" class="dos-progress-fill"></div>
-              <div id="progressText" class="dos-progress-text">--:-- / --:--</div>
+          <!-- 상단 진행바 및 타임 레이아웃 컴포넌트 -->
+          <div id="progressBarContainer" class="dos-progress-container" style="display: flex; align-items: center; gap: 8px; width: 100%; cursor: pointer;">
+            <div class="dos-progress-bar-border" style="flex: 1; height: 14px; background-color: #000000; border: 1px solid var(--border-dark); position: relative;">
+              <!-- 실시간 채움 레이어 -->
+              <div id="progressFill" style="width: 0%; height: 100%; background-color: #54ff54; transition: width 0.05s linear;"></div>
+            </div>
+            <!-- 디지털 타임 전광판 -->
+            <span id="progressText" style="font-family: monospace; min-width: 90px; text-align: right; color: var(--color-gray); font-size: 12px;">0:00 / 0:00</span>
+          </div>
             </div>
             
           <!-- 볼륨 제어 그룹 패널 (음소거 버튼 이식형) -->
@@ -164,6 +170,18 @@
         </div>
       </div>
     </div>
+
+          <!-- 플레이어 하단 배치용 레트로 피아노 롤 가로 스크롤 시퀀서 상자 -->
+          <div class="dos-box" style="margin-top: 10px; padding: 6px; background-color: #000000;">
+            <div class="dos-box-header" style="font-size: 11px; color: #54ffff; margin-bottom: 4px; display: flex; justify-content: space-between;">
+              <span>🎹 REALTIME OPL3 HARDWARE PIANO-ROLL SEQUENCER</span>
+              <span id="pianoRollSpecs" style="color: var(--color-gray);">CH: 16 / KEY: 48</span>
+            </div>
+            <!-- 실시간 그래픽 렌더링용 뷰포트 레이어 -->
+            <div id="pianoRollWrapper" style="width: 100%; height: 140px; position: relative; overflow: hidden; border: 1px solid var(--border-dark);">
+              <canvas id="pianoRollCanvas" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block;"></canvas>
+            </div>
+          </div>
 
     <!-- 4. 최하단 정보 상태바 -->
     <div class="dos-status-bar">
