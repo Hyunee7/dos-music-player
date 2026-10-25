@@ -49,8 +49,8 @@
 
     <!-- 1. 최상단 타이틀 바 -->
     <div class="dos-title-bar">
-      <a href="https://naver.com" target="_blank" rel="noopener noreferrer" class="dos-link">도스박물관</a>
-      <span> IMS Player v1.0.0</span>
+      Hyunee
+      <span> IMS Player v0.0.6</span>
     </div>
 
     <!-- 2. 메인 콘텐츠 그리드 -->
@@ -141,7 +141,7 @@
             <button id="helpBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><i data-lucide="help-circle"></i></button>
           </div>
           <div class="dos-panel-content" style="flex: 1; min-height: 0; padding: 4px;">
-            <div class="dos-list">
+            <div class="dos-list dos-box-inner dos-playlist-scroll-area">
               <div class="dos-list-scroll" id="musicTrackList">
                 <!-- JS를 통해 트랙 목록(dos-list-item) 동적 렌더링 -->
               </div>
@@ -171,17 +171,6 @@
       </div>
     </div>
 
-          <!-- 플레이어 하단 배치용 레트로 피아노 롤 가로 스크롤 시퀀서 상자 -->
-          <div class="dos-box" style="margin-top: 10px; padding: 6px; background-color: #000000;">
-            <div class="dos-box-header" style="font-size: 11px; color: #54ffff; margin-bottom: 4px; display: flex; justify-content: space-between;">
-              <span>🎹 REALTIME OPL3 HARDWARE PIANO-ROLL SEQUENCER</span>
-              <span id="pianoRollSpecs" style="color: var(--color-gray);">CH: 16 / KEY: 48</span>
-            </div>
-            <!-- 실시간 그래픽 렌더링용 뷰포트 레이어 -->
-            <div id="pianoRollWrapper" style="width: 100%; height: 140px; position: relative; overflow: hidden; border: 1px solid var(--border-dark);">
-              <canvas id="pianoRollCanvas" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block;"></canvas>
-            </div>
-          </div>
 
     <!-- 4. 최하단 정보 상태바 -->
     <div class="dos-status-bar">
