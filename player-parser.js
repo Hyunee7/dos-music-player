@@ -4,6 +4,7 @@
 window.ChipTuneTitleParser = (function() {
   
   function decodeJohab(bytes) {
+	/**/
     var result = ""; var i = 0;
     while (i < bytes.length) {
       if (bytes[i] === 0) { i++; continue; }
@@ -25,7 +26,17 @@ window.ChipTuneTitleParser = (function() {
       }
     }
     return result.trim();
+	/** /
+    // 1. 디코더 인스턴스 생성 (상용 조합형 한글 규격인 'johab' 지정)
+    // 만약 일반 완성형 한글 텍스트라면 'euc-kr'을 사용합니다.
+	console.log('bytes',bytes)
+    const decoder = new TextDecoder('johab');
+	console.log('decoder.decode(bytes)',decoder.decode(bytes))
+	return decoder.decode(bytes);
+	*/
   }
+  
+  
 
   function readNullTerminated(u8Array, offset, maxLength) {
     const slice = u8Array.subarray(offset, offset + maxLength);
@@ -86,7 +97,8 @@ window.ChipTuneTitleParser = (function() {
         basicTempo: view.getUint16(60, true) || 120,
         tickBeat: u8[36] || 24,
         totalTick: view.getUint32(38, true) || 0,
-        title: readNullTerminated(u8, 6, 30)
+//        title: readNullTerminated(u8, 6, 30)
+        title: JohabDecoder.decode(arrayBuffer, 6, 30)  // 조합형한글 변환 모듈 변경
       };
     },
 
@@ -127,12 +139,27 @@ window.ChipTuneTitleParser = (function() {
 
     parseISSFile(arrayBuffer) {
       const u8 = new Uint8Array(arrayBuffer); if (u8.length < 154) return null;
-      let offset = 30; const writer = readNullTerminated(u8, offset, 30); offset += 30; const composer = readNullTerminated(u8, offset, 30); offset += 30; const singer = readNullTerminated(u8, offset, 30); offset += 30; const editor = readNullTerminated(u8, offset, 30); offset += 30;
-      const recCount = u8[offset] | (u8[offset + 1] << 8); offset += 2; const lineCount = u8[offset] | (u8[offset + 1] << 8); offset += 2;
+      let offset = 30; // ISS 파일 사인정보 스킵
+	  const writer = readNullTerminated(u8, offset, 30); offset += 30;
+	  const composer = readNullTerminated(u8, offset, 30); offset += 30;
+	  const singer = readNullTerminated(u8, offset, 30); offset += 30;
+	  const editor = readNullTerminated(u8, offset, 30); offset += 30;
+      const recCount = u8[offset] | (u8[offset + 1] << 8); offset += 2;
+	  const lineCount = u8[offset] | (u8[offset + 1] << 8); offset += 2;
       const records = [];
-      for (let i = 0; i < recCount; i++) { if (offset + 5 > u8.length) break; const kasaTick = u8[offset] | (u8[offset + 1] << 8); const line = readInt8(u8[offset + 2]); const startX = readInt8(u8[offset + 3]); const widthX = readInt8(u8[offset + 4]); records.push({ kasaTick, line, startX, widthX }); offset += 5; }
+      for (let i = 0; i < recCount; i++) { if (offset + 5 > u8.length) break;
+	  const kasaTick = u8[offset] | (u8[offset + 1] << 8);
+	  const line = readInt8(u8[offset + 2]);
+	  const startX = readInt8(u8[offset + 3]);
+	  const widthX = readInt8(u8[offset + 4]); records.push({ kasaTick, line, startX, widthX }); offset += 5; }
       const scripts = [];
-      for (let i = 0; i < lineCount; i++) { if (offset + 64 > u8.length) break; const lineText = readNullTerminated(u8, offset, 64); scripts.push(lineText); offset += 64; }
+      for (let i = 0; i < lineCount; i++) {
+		if (offset + 64 > u8.length) break;
+		//const lineText = readNullTerminated(u8, offset, 64);
+		const lineText = JohabDecoder.decode(arrayBuffer, offset, 64); // 조합형한글 변환 모듈 변경
+		scripts.push(lineText); offset += 64; 
+	  }
+	  
       return { writer, composer, singer, editor, records, scripts };
     }
   };

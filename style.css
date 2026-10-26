@@ -1,8 +1,9 @@
 /* style.css - 전체 파일 통합 전사본 */
+/*
 :root {
-  --bg-main: #0000a8;       /* 고전 도스 블루 */
-  --bg-select: #00a8a8;     /* 선택 및 청록색 */
-  --text-main: #a8a8a8;     /* 기본 실버 텍스트 */
+  --bg-main: #0000a8;       /* 고전 도스 블루 * /
+  --bg-select: #00a8a8;     /* 선택 및 청록색 * /
+  --text-main: #a8a8a8;     /* 기본 실버 텍스트 * /
   --color-white: #ffffff;
   --color-yellow: #ffff54;
   --color-cyan: #54ffff;
@@ -12,15 +13,14 @@
   --toggle-active-bg: #00a8a8;
   --toggle-active-text: #ffffff;
 
-  /* 비주얼라이저 전용 고전 LED 색상 배정 */
+  /* 비주얼라이저 전용 고전 LED 색상 배정 * /
   --segment-inactive: #1a1a26;
-  --meter-low: #00a800;     /* 기본 주파수 녹색 */
-  --meter-mid: #a8a800;     /* 중간 주파수 황색 */
-  --meter-high: #a80000;    /* 임계 주파수 적색 */
-  --meter-peak: #54ffff;    /* 피크 탑 홀드 스카이블루 */
+  --meter-low: #00a800;     /* 기본 주파수 녹색 * /
+  --meter-mid: #a8a800;     /* 중간 주파수 황색 * /
+  --meter-high: #a80000;    /* 임계 주파수 적색 * /
+  --meter-peak: #54ffff;    /* 피크 탑 홀드 스카이블루 * /
   --spectrum-bar-bg: #000000;
 }
-
 body {
   background-color: #000000;
   color: var(--text-main);
@@ -33,7 +33,75 @@ body {
   min-height: 100vh;
   box-sizing: border-box;
 }
-
+*/
+:root {
+    --color-black: #0d0d12;
+    --color-maroon: #e06080;
+    --color-green: #3ddc97;
+    --color-olive: #e0a050;
+    --color-navy: #1a1a24;
+    --color-purple: #a78bfa;
+    --color-teal: #14141c;
+    --color-silver: #6b7280;
+    --color-gray: #252530;
+    --color-red: #f87171;
+    --color-lime: #4ade80;
+    --color-yellow: #fbbf24;
+    --color-blue: #2d2d3a;
+    --color-fuchsia: #1e1e2a;
+    --color-aqua: #38bdf8;
+    --color-white: #f4f4f5;
+    --bg-main: #14141c;
+    --text-main: #f4f4f5;
+    --text-emphasis: #a78bfa;
+    --text-disabled: #52525b;
+    --border-highlight: #3f3f50;
+    --border-light: #3f3f50;
+    --border-shadow: #0d0d12;
+    --border-dark: #0d0d12;
+    --bg-select: #2d2d3a;
+    --text-select: #f4f4f5;
+    --toggle-active-bg: rgba(255, 255, 255, .2);
+    --toggle-active-text: #f4f4f5;
+    --meter-low: #4a5568;
+    --meter-mid: #6b7a8f;
+    --meter-high: #8fa0b8;
+    --meter-peak: #FFFF00;
+    --spectrum-bar-bg: #1e1e2a;
+    --segment-inactive: rgba(255, 255, 255, .05);
+    --piano-white-key: #52525b;
+    --piano-white-key-active: #f4f4f5;
+    --piano-white-key-border: #3f3f50;
+    --piano-black-key: #14141c;
+    --piano-black-key-active: #f4f4f5;
+    --piano-black-key-border: #0d0d12;
+    --lyrics-highlight: #3ddc97;
+    --lyrics-normal: #52525b;
+}
+@font-face {
+    font-family: NeoDunggeunmo;
+    src: url(https://cdn.jsdelivr.net/gh/neodgm/neodgm-webfont@1.601/neodgm/neodgm.woff2) format("woff2"),url(https://cdn.jsdelivr.net/gh/neodgm/neodgm-webfont@1.601/neodgm/neodgm.woff) format("woff");
+    font-weight: 400;
+    font-style: normal;
+    font-display: block;
+}
+body { /*2*/
+    font-family: NeoDunggeunmo,"MS Sans Serif","Microsoft Sans Serif",sans-serif;
+    /*background: var(--bg-main);*/
+    color: var(--text-main);
+    font-size: 16px;
+    line-height: 1.4;
+    font-weight: 400;
+    font-style: normal;
+    /*min-height: 100%;*/
+  margin: 0;
+  padding: 10px;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+}
 .dos-container {
   width: 960px;
   height: 640px;
@@ -136,6 +204,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex:1;
 }
 
 .dos-button:active, .dos-button-active {
