@@ -43,6 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   /**
    * player.js - Part 2: 현재 연주 중인 트랙(dos-list-item-playing) 실시간 반전 점등식 플레이리스트 렌더러 (순정)
    */
+//////스펙트럼.초기화.시작//////
   const MASTER_BAR_COUNT = 16; const MASTER_SEGMENT_COUNT = 40; const MASTER_PEAK_HOLD_FRAMES = 15; const MASTER_PEAK_FALL_ACCELERATION = 0.3; const MASTER_VALUE_FALL_SPEED = 4;
   const masterBarData = Array.from({ length: MASTER_BAR_COUNT }, () => ({ value: 0, peak: 0, peakHoldTime: 0, peakFallSpeed: 0 }));
   const masterColors = { inactive: "#1a1a26", low: "#00a800", mid: "#a8a800", high: "#a8a800", peak: "#54ffff", barBg: "#000000" };
@@ -62,6 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const ctx = canv.getContext("2d"); if (ctx) { ctx.scale(dpr, dpr); canvasContexts.push({ ctx, width: rect.width, height: rect.height || 112 }); }
     });
   }
+//////스펙트럼.초기화.끝//////
 
   function renderPlaylist() {
     trackListContainer.innerHTML = ""; const totalHeight = currentPlaylist.length * ITEM_HEIGHT; trackListContainer.style.height = `${totalHeight}px`;
@@ -99,45 +101,66 @@ document.addEventListener("DOMContentLoaded", async () => {
   /**
    * player.js - Part 3: 상위 스코프 상수를 참조하는 30fps 주파수 스펙트럼 애널라이저 루프 및 오디오 피더
    */
+  /**
+   * 16채널 LED 기둥을 사각형 격자로 직접 주사해 그리는 코어
+   * 주파수 진폭 값의 크기에 따라 색상 수식 조건절(녹색 ➡️ 황색 ➡️ 피크 스카이블루 LED 빔)을 실시간으로 판별하면서, 격자 gap 공간 분할 수식에 맞춰 사각형 블록(fillRect)으로 화면에 직접 출력 주사합니다.
+   */
   function renderSingleBar(barIndex) {
     const target = canvasContexts[barIndex]; if (!target || !target.ctx || target.width === 0 || target.height === 0) return;
     const { ctx, width, height } = target; const segmentGap = 1;
+
+	// 40개 도트 LED 세그먼트의 높이를 화면 해상도에 맞춰 기하학 배율 계산
     const segmentHeight = (height - segmentGap * (MASTER_SEGMENT_COUNT - 1)) / MASTER_SEGMENT_COUNT; const bar = masterBarData[barIndex];
 
     ctx.fillStyle = masterColors.barBg; ctx.fillRect(0, 0, width, height);
     const peakSegIndex = Math.min(Math.floor((bar.peak * MASTER_SEGMENT_COUNT) / 100), MASTER_SEGMENT_COUNT - 1);
 
+    // 🎯 [실시간 16채널 스펙트럼 드로우 최종 주사 지점]
+    // 40층으로 구성된 고전 가라오케 LED 타워 기둥을 밑바닥부터 천장까지 격자형 격막 구조로 쌓아 올리며 주사합니다!
     for (let segIndex = 0; segIndex < MASTER_SEGMENT_COUNT; segIndex++) {
       const threshold = ((segIndex + 1) / MASTER_SEGMENT_COUNT) * 100; const isActive = bar.value >= threshold; const isPeak = segIndex === peakSegIndex;
-      let color = masterColors.inactive;
-      if (isPeak && bar.peak > 0) color = masterColors.peak;
+      let color = masterColors.inactive; // 소리 안 나는 기본 베이스 소등 색상 (#1a1a26)
+      if (isPeak && bar.peak > 0) color = masterColors.peak; // 맨 꼭대기 순간 고정 하늘색 피크 LED (#54ffff)
       else if (isActive) {
         const ratio = segIndex / MASTER_SEGMENT_COUNT;
+		// 3층 타워 배율에 맞춰 하단은 녹색, 중/상단은 황색 고광도 네온 불빛 반전 매핑
         if (ratio >= 2 / 3) color = masterColors.high; else if (ratio >= 1 / 3) color = masterColors.mid; else color = masterColors.low;
       }
-      const segY = (MASTER_SEGMENT_COUNT - 1 - segIndex) * (segmentHeight + segmentGap); ctx.fillStyle = color; ctx.fillRect(0, segY, width, segmentHeight);
+      const segY = (MASTER_SEGMENT_COUNT - 1 - segIndex) * (segmentHeight + segmentGap); ctx.fillStyle = color; 
+
+	  // 픽셀 사각형 플래시 메모리 전사 단행!
+	  ctx.fillRect(0, segY, width, segmentHeight);
     }
   }
 
   function renderSpectrumLEDs() { for (let i = 0; i < MASTER_BAR_COUNT; i++) renderSingleBar(i); }
   let lastVisualizerTime = 0; const targetInterval = 1000 / 30;
 
+  /**
+   * 실시간 주파수 가로채기
+   */
   function runVisualizerEngineLoop(timestamp) {
     requestAnimationFrame(runVisualizerEngineLoop); if (!window.TrackerAudioEngine) return;
     if (timestamp - lastVisualizerTime < targetInterval) return; lastVisualizerTime = timestamp;
     const analyser = window.TrackerAudioEngine.getAnalyserNode();
     if (!analyser) {
+	  // 가용 주파수 스펙트럼 대역을 16개 대역폭으로 정밀 쪼개어 masterBarData 버퍼 배열에 주입
       for (let i = 0; i < MASTER_BAR_COUNT; i++) {
         const prev = masterBarData[i]; let value = Math.max(0, prev.value - MASTER_VALUE_FALL_SPEED); let peak = prev.peak; let peakHoldTime = prev.peakHoldTime; let peakFallSpeed = prev.peakFallSpeed;
         if (peakHoldTime > 0) peakHoldTime--; else { peakFallSpeed += MASTER_PEAK_FALL_ACCELERATION; peak = Math.max(0, peak - peakFallSpeed); }
         masterBarData[i] = { value, peak, peakHoldTime, peakFallSpeed };
       }
+	  // 🎯 [드로잉 명령 하강 하달] 가공된 데이터 버퍼를 바탕으로 화면 그리기 함수 강제 호출!
       renderSpectrumLEDs(); return;
     }
-    const bufferLength = analyser.frequencyBinCount; const dataArray = new Uint8Array(bufferLength); analyser.getByteFrequencyData(dataArray);
+    const bufferLength = analyser.frequencyBinCount; const dataArray = new Uint8Array(bufferLength); 
+	// WASM 오디오 스레드가 공출해 낸 원본 주파수 데이터 분해 수령
+	analyser.getByteFrequencyData(dataArray);
     const skipBins = 2; const usableBins = bufferLength - skipBins; const binsPerBar = Math.floor(usableBins / MASTER_BAR_COUNT);
 
+	// 가용 주파수 스펙트럼 대역을 16개 대역폭으로 정밀 쪼개어 masterBarData 버퍼 배열에 주입
     for (let i = 0; i < MASTER_BAR_COUNT; i++) {
+	  // 주파수 평균치 산출 및 하강 감쇠 속도 계산
       const startBin = skipBins + i * binsPerBar; const endBin = Math.min(startBin + binsPerBar, bufferLength); let sum = 0;
       for (let j = startBin; j < endBin; j++) sum += dataArray[j];
       const avg = sum / (endBin - startBin); const rawValue = Math.round((avg / 255) * 100); const prev = masterBarData[i];
@@ -145,6 +168,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (value >= peak) { peak = value; peakHoldTime = MASTER_PEAK_HOLD_FRAMES; peakFallSpeed = 0; } else if (peakHoldTime > 0) { peakHoldTime--; } else { peakFallSpeed += MASTER_PEAK_FALL_ACCELERATION; peak = Math.max(0, peak - peakFallSpeed); }
       masterBarData[i] = { value, peak, peakHoldTime, peakFallSpeed };
     }
+	// 🎯 [드로잉 명령 하강 하달] 가공된 데이터 버퍼를 바탕으로 화면 그리기 함수 강제 호출!
     renderSpectrumLEDs();
   }
 
@@ -189,8 +213,7 @@ window['adplug'] = adplugModuleInstance;
   }
   window.triggerBufferWriteFeedGlobal = triggerBufferWriteFeed;
   /**
-   * player.js - Part 4-1: 진짜 하드웨어 틱(_emu_get_current_tick) 자원을 다이렉트로 직결한 ISS 가사 싱크 엔진
-   * 래퍼 내부의 실제 틱 API를 정조준하여, 역산 오차 0%의 무결점 하드웨어 칼싱크를 수립했습니다.
+   * player.js - Part 4-A: 순정 상태 맥박 보존 및 WASM 코어 원본 시간 축 직결형 가사/시간 동기화 마스터 루프
    */
   function runStateSyncLoop() {
     clearInterval(stateUpdateInterval);
@@ -198,42 +221,47 @@ window['adplug'] = adplugModuleInstance;
       const audioEngine = window.TrackerAudioEngine; const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
       if (!audioState || !currentIssData || (audioState.currentPositionMs === 0 && !audioState.isPlaying)) {
         const tempoElement = document.getElementById("tempoDisplayValue"); if (tempoElement) tempoElement.innerText = "---";
-        lyricsDisplay.innerHTML = `
-          <div style="text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%; width:100%;">
-            <div style="margin-bottom: 4px; color: var(--color-white); font-size:14px;">(C) 2025 QuickBASIC (gcjjyy@gmail.com)</div>
-            <div style="margin-bottom: 2px; color: var(--color-gray); font-size:12px;">도움 주신 분들 : 하늘소, 피시키드, 키노피오, Ospaggi</div>
-            <div style="margin-top: 4px;"><a href="https://naver.com" target="_blank" rel="noopener noreferrer" class="dos-link-credits">도스박물관 - 고전의 감성을 아카이빙하는 곳</a></div>
-          </div>`;
+        lyricsDisplay.innerHTML = `가사 음슴`;
         if (audioState) {
           const progressPercent = (audioState.currentPositionMs / audioState.totalDurationMs) * 100 || 0;
           progressFill.style.width = `${Math.min(100, Math.max(0, progressPercent))}%`; progressText.innerText = `${formatTime(audioState.currentPositionMs)} / ${formatTime(audioState.totalDurationMs)}`;
-        }
-        return;
-      }
-      const progressPercent = (audioState.currentPositionMs / audioState.totalDurationMs) * 100 || 0;
-      progressFill.style.width = `${Math.min(100, Math.max(0, progressPercent))}%`; progressText.innerText = `${formatTime(audioState.currentPositionMs)} / ${formatTime(audioState.totalDurationMs)}`;
+
       const liveBpm = (audioEngine && audioEngine.currentRuntimeTempo) ? Math.round(audioEngine.currentRuntimeTempo) : 120;
       const tempoElement = document.getElementById("tempoDisplayValue"); if (tempoElement) tempoElement.innerText = String(liveBpm).padStart(3, '0');
 
-      // ═══════════════════════════════════════════════════════════════
-      // 🎯 [WASM 에뮬레이터 코어 단 주입형 리얼타임 틱 직결 정사 파이프라인]
-      // ═══════════════════════════════════════════════════════════════
+        }
+        return;
+      }
+      
+      const currentMs = audioState.currentPositionMs || 0;
+      
+      // [해결 1] 재생 상태 오버라이드 대신 드로우 프레임 내부에서 코어의 진짜 가변 전체 시간을 동적 확보합니다!
+      let totalMs = audioState.totalDurationMs || 0;
+      if (audioEngine.currentEngineType === 'libopenmpt' && audioEngine.loadedModulePtr && audioEngine.openmptModuleInstance) {
+        totalMs = audioEngine.openmptModuleInstance._openmpt_module_get_duration_seconds(audioEngine.loadedModulePtr) * 1000;
+      } else if (audioEngine.currentEngineType === 'adplug' && audioEngine.adplugModuleInstance && typeof audioEngine.adplugModuleInstance._emu_get_max_position === 'function') {
+        totalMs = audioEngine.adplugModuleInstance._emu_get_max_position();
+      }
+      if (totalMs <= 0) totalMs = 1;
+
+      const progressPercent = (currentMs / totalMs) * 100 || 0;
+      progressFill.style.width = `${Math.min(100, Math.max(0, progressPercent))}%`; 
+      progressText.innerText = `${formatTime(currentMs)} / ${formatTime(totalMs)}`;
+      
+      const liveBpm = (audioEngine && audioEngine.currentRuntimeTempo) ? Math.round(audioEngine.currentRuntimeTempo) : 120;
+      const tempoElement = document.getElementById("tempoDisplayValue"); if (tempoElement) tempoElement.innerText = String(liveBpm).padStart(3, '0');
+
       let rawHardwareTick = 0;
       const adplugInstance = window.TrackerAudioEngine?.adplugModuleInstance;
-
-      // AdPlug 엔진 모드이면서 브라우저 런타임에 실재하는 _emu_get_current_tick() 함수를 정교하게 직접 가로챔!
       if (window.TrackerAudioEngine?.currentEngineType === 'adplug' && adplugInstance && typeof adplugInstance._emu_get_current_tick === 'function') {
         rawHardwareTick = adplugInstance._emu_get_current_tick();
       } else {
-        // Tracker(LibOpenMPT) 모드일 경우 샘플 소모 레이트 기준 정사 역산 틱 바이패스
-        const currentMs = audioState.currentPositionMs || 0;
         const currentPlaylistTrack = currentPlaylist[playingIndex];
         const bTempo = (currentPlaylistTrack && currentPlaylistTrack.basicTempo) ? currentPlaylistTrack.basicTempo : 120;
         const tBeat = (currentPlaylistTrack && currentPlaylistTrack.tickBeat) ? currentPlaylistTrack.tickBeat : 24;
         rawHardwareTick = (currentMs / 1000) * ((bTempo * tBeat) / 60);
       }
 
-      // ISS 노래방 자막 모듈 8분률 규격 레이트에 완벽 동기화되도록 오프셋 변환
       const adjustedTick = rawHardwareTick / 8; 
 
       let left = 0; let right = currentIssData.records.length - 1; let resultIndex = -1;
@@ -249,20 +277,13 @@ window['adplug'] = adplugModuleInstance;
         while (bytePos < startX && charPos < currentLine.length) { bytePos += (currentLine.charCodeAt(charPos) > 127) ? 2 : 1; charPos++; }
         bytePos = 0; while (bytePos < widthX && charPos < currentLine.length) { bytePos += (currentLine.charCodeAt(charPos) > 127) ? 2 : 1; charPos++; }
         const highlightEnd = charPos;
-        lyricsDisplay.innerHTML = `
-          <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; width: 100%; text-align: center;">
-            <div style="font-weight: 500; text-align: center; width: 100%; word-break: break-all; line-height: 1.4;">
-              <span style="color: var(--lyrics-highlight); font-weight: bold; display: inline;">${currentLine.substring(0, highlightEnd)}</span><span style="color: var(--lyrics-normal); display: inline;">${currentLine.substring(highlightEnd)}</span>
-            </div>
-            <div style="font-size: 13px; color: var(--lyrics-normal); opacity: 0.4; min-height: 18px; margin-top: 6px; text-align: center; width: 100%; white-space: pre-wrap;">${nextLine}</div>
-          </div>`;
+        lyricsDisplay.innerHTML = `가사 음슴`;
       }
     }, 80); 
   }
 
-
   /**
-   * player.js - Part 4-2: 드롭된 로컬 폴더 내 가상 악기 뱅크 매핑 제어부 및 목록 정중앙 오토 세로 스크롤러
+   * player.js - Part 4-B: 시동 버퍼 체인 간섭이 원천 제거된 무결점 트랙 릴레이 적재 및 철도 탐색기
    */
   async function loadAndPlayTrack() {
     const track = currentPlaylist[playingIndex]; if (!track) return;
@@ -305,7 +326,9 @@ window['adplug'] = adplugModuleInstance;
         }
       }
 
+      // [해결 2] 오디오 워크렛 스레드의 다음 트랙 연주 종료 확인 핸들러를 순정 규격 그대로 유지하여 시동 잠금 해제!
       audioEngine.setOnTrackEnd(() => {
+        console.log("%c[오토 주크박스] 현재 트랙 연주 종료 확인 -> 다음 트랙 바통 인계 작동", "color: #54ff54; font-weight: bold;");
         if (repeatMode === 'one') { loadAndPlayTrack(); } 
         else if (repeatMode === 'shuffle') { const rand = Math.floor(Math.random() * currentPlaylist.length); playingIndex = rand; selectedIndex = rand; loadAndPlayTrack(); } 
         else {
@@ -314,7 +337,12 @@ window['adplug'] = adplugModuleInstance;
         }
       });
 
-      await audioEngine.loadTrack(musicArrayBuffer, track.filename, bnkArrayBuffer); audioEngine.play(); btnPlay.innerHTML = `<i data-lucide="pause"></i>`;
+      // 기존 오디오 엔진 인스턴스의 런타임 하이재킹 방식 함수 오염을 완전히 지우고, 엔진 고유의 순정 적재 체인을 독립 기동시킵니다.
+      await audioEngine.loadTrack(musicArrayBuffer, track.filename, bnkArrayBuffer); 
+      audioEngine.play(); btnPlay.innerHTML = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+  <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+  <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+</svg>`;
       btnStop.removeAttribute("disabled"); btnPrev.removeAttribute("disabled"); btnNext.removeAttribute("disabled");
       statusBarText.innerText = (currentIssData && currentIssData.singer) ? `재생중 - [가수: ${currentIssData.singer}] ${track.title}` : `재생중 - ${track.title}`; if (typeof lucide !== 'undefined') lucide.createIcons();
       
@@ -322,8 +350,20 @@ window['adplug'] = adplugModuleInstance;
       runStateSyncLoop(); renderPlaylist();
     } catch (err) { console.error(err); statusBarText.innerText = `적재 실패: ${track.title}`; } finally { if (overlay) overlay.classList.add("hidden"); }
   }
+
+  const progressBarContainer = document.getElementById("progressBarContainer");
+  const targetRail = progressBarContainer?.querySelector(".dos-progress-bar-border") || progressBarContainer;
+  if (targetRail) {
+    targetRail.addEventListener("click", (e) => {
+      const audioEngine = window.TrackerAudioEngine; if (!audioEngine) return; const playbackState = audioEngine.getPlaybackState(); if (!playbackState || !playbackState.totalDurationMs) return;
+      const rect = targetRail.getBoundingClientRect(); const clickX = e.clientX - rect.left; const widthRatio = Math.max(0, Math.min(1, clickX / rect.width)); const targetMs = widthRatio * playbackState.totalDurationMs;
+      if (typeof audioEngine.seekTo === 'function') audioEngine.seekTo(targetMs);
+    });
+  }
+
   /**
-   * player.js - Part 4-3: 로컬 폴더 내 .BNK 악기 뱅크 자원 재귀 수집 크롤러 및 미디어 콘트롤 패널 최종 종결 마감
+   * player.js - Part 4-C: 폴더 재귀 스캔 및 개별 다중 파일 드롭 로드가 동시 완치된 최종 마감부
+   * 드롭존에 개별 파일 다중 셀렉트 투하 시에도 한 치의 누락 없이 로컬 데이터베이스 스왑을 이뤄냅니다.
    */
   if (typeof targetRail !== 'undefined' || (window.progressBarContainer)) {
     const finalRail = document.getElementById("progressBarContainer")?.querySelector(".dos-progress-bar-border") || document.getElementById("progressBarContainer");
@@ -340,9 +380,16 @@ window['adplug'] = adplugModuleInstance;
   dropZone.addEventListener("dragleave", () => { dropZone.style.backgroundColor = "var(--bg-main)"; });
   dropZone.addEventListener("drop", async (e) => {
     e.preventDefault(); dropZone.style.backgroundColor = "var(--bg-main)";
-    const items = e.dataTransfer.items; if (!items || items.length === 0) { statusBarText.innerText = "드롭 데이터 유효 안함"; return; }
-    statusBarText.innerText = "디렉토리 구조 자원 정밀 스캔 중..."; const allFiles = [];
+    
+    // 🎯 [다중 개별 파일 및 폴더 동시 탐색 하이브리드 드라이버 가동]
+    const items = e.dataTransfer.items; 
+    const filesList = e.dataTransfer.files;
+    if ((!items || items.length === 0) && (!filesList || filesList.length === 0)) { statusBarText.innerText = "드롭 데이터 유효 안함"; return; }
+    
+    statusBarText.innerText = "디렉토리 및 개별 자원 구조 정밀 스캔 중..."; 
+    const allFiles = [];
 
+    // 폴더 내부를 하위 노드까지 파고드는 비동기 재귀 엔진
     async function traverseFileTree(item, depth = 0) {
       if (item.isFile) { return new Promise((resolve) => { item.file((file) => { allFiles.push(file); resolve(); }); }); } 
       else if (item.isDirectory) {
@@ -351,14 +398,23 @@ window['adplug'] = adplugModuleInstance;
         await readEntriesBatch();
       }
     }
-    for (let i = 0; i < items.length; i++) { const entry = items[i].webkitGetAsEntry(); if (entry) await traverseFileTree(entry); }
+
+    // 1순위: Entry 구조 가용 시 (폴더 드롭 또는 고급 브라우저 대응)
+    if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+      for (let i = 0; i < items.length; i++) { const entry = items[i].webkitGetAsEntry(); if (entry) { await traverseFileTree(entry); } }
+    } 
+    // 2순위: 단순 파일 뭉치 드롭 가용 시 (바탕화면 개별 파일 다중 셀렉트 대응 리턴 바이패스)
+    if (allFiles.length === 0 && filesList && filesList.length > 0) {
+      for (let i = 0; i < filesList.length; i++) { allFiles.push(filesList[i]); }
+    }
 
     if (allFiles.length > 0) {
-      const allowedFiles = allFiles.filter(f => /\.(mod|xm|s3m|it|ims|rol|vgm)$/i.test(f.name)); 
+      const allowedFiles = allFiles.filter(f => /\.(mod|xm|s3m|it|ims|rol|vgm|mid)$/i.test(f.name)); 
       const issFiles = allFiles.filter(f => /\.iss$/i.test(f.name));
       const issMap = new Map(issFiles.map(f => [f.name.toLowerCase().replace(/\.iss$/, ''), f]));
       
-      const bnkFiles = allFiles.filter(f => /\.bnk$/i.test(f.name)); window.uploadedBnkMap = new Map(bnkFiles.map(f => [f.name.toLowerCase(), f]));
+      const bnkFiles = allFiles.filter(f => /\.bnk$/i.test(f.name)); 
+      window.uploadedBnkMap = new Map(bnkFiles.map(f => [f.name.toLowerCase(), f]));
 
       if (allowedFiles.length > 0) {
         const scannedTracks = []; for (const file of allowedFiles) {
@@ -367,7 +423,10 @@ window['adplug'] = adplugModuleInstance;
           try { const buf = await file.arrayBuffer(); if (window.ChipTuneTitleParser) { parsedTitle = window.ChipTuneTitleParser.extractTitle(buf, file.name); const imsInfo = window.ChipTuneTitleParser.parseImsHeader(buf); if (imsInfo) { bTempo = imsInfo.basicTempo; tBeat = imsInfo.tickBeat; } } } catch (err) { console.warn(err); }
           const matchedIssFile = issMap.get(baseName); scannedTracks.push({ filename: file.name, format: ext, title: parsedTitle, fileObject: file, issFileObject: matchedIssFile || null, basicTempo: bTempo, tickBeat: tBeat });
         }
-        currentPlaylist = scannedTracks; folderLabel.innerText = "사용자 폴더 보관함 로드 완료"; document.getElementById("listTitle").innerText = "📁 로컬 폴더 보관함"; selectedIndex = 0; playingIndex = 0; renderPlaylist(); statusBarText.innerText = "대기";
+        currentPlaylist = scannedTracks; 
+        folderLabel.innerText = "사용자 다중 파일 보관함 적재 완료"; 
+        document.getElementById("listTitle").innerText = "📁 로컬 파일 보관함"; 
+        selectedIndex = 0; playingIndex = 0; renderPlaylist(); statusBarText.innerText = "대기";
       } else { statusBarText.innerText = "chiptune 포맷 파일이 없습니다."; }
     } else { statusBarText.innerText = "파일 로드 실패"; }
   });
@@ -381,12 +440,15 @@ window['adplug'] = adplugModuleInstance;
 
   btnPlay.addEventListener("click", () => {
     if (currentPlaylist.length === 0) return; const audioEngine = window.TrackerAudioEngine; const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
-    if (audioState && audioState.isPlaying) { if (audioEngine.queueWriter && audioEngine.queueWriter.node) { audioEngine.queueWriter.node.port.postMessage({ type: 'stop' }); } audioEngine.pause(); btnPlay.innerHTML = `<i data-lucide="play"></i>`; }
-    else { if (audioState && audioState.currentPositionMs > 0) { if (audioEngine.queueWriter && audioEngine.queueWriter.node) { audioEngine.queueWriter.node.port.postMessage({ type: 'start' }); } audioEngine.play(); btnPlay.innerHTML = `<i data-lucide="pause"></i>`; if (typeof window.triggerBufferWriteFeedGlobal === 'function') { window.triggerBufferWriteFeedGlobal(); } } else loadAndPlayTrack(); }
+    if (audioState && audioState.isPlaying) { if (audioEngine.queueWriter && audioEngine.queueWriter.node) { audioEngine.queueWriter.node.port.postMessage({ type: 'stop' }); } audioEngine.pause(); btnPlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><rect x="1" y="4" width="4" height="16" rx="1"></rect><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`; }
+    else { if (audioState && audioState.currentPositionMs > 0) { if (audioEngine.queueWriter && audioEngine.queueWriter.node) { audioEngine.queueWriter.node.port.postMessage({ type: 'start' }); } audioEngine.play(); btnPlay.innerHTML = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+  <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+  <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+</svg>`; if (typeof window.triggerBufferWriteFeedGlobal === 'function') { window.triggerBufferWriteFeedGlobal(); } } else loadAndPlayTrack(); }
     if (typeof lucide !== 'undefined') lucide.createIcons();
   });
 
-  btnStop.addEventListener("click", () => { if (window.TrackerAudioEngine) { window.TrackerAudioEngine.stop(); if (window.TrackerAudioEngine.queueWriter && window.TrackerAudioEngine.queueWriter.node) { window.TrackerAudioEngine.queueWriter.node.port.postMessage({ type: 'hard_reset' }); } } btnPlay.innerHTML = `<i data-lucide="play"></i>`; progressFill.style.width = `0%`; progressText.innerText = `--:-- / --:--`; if (typeof lucide !== 'undefined') lucide.createIcons(); });
+  btnStop.addEventListener("click", () => { if (window.TrackerAudioEngine) { window.TrackerAudioEngine.stop(); if (window.TrackerAudioEngine.queueWriter && window.TrackerAudioEngine.queueWriter.node) { window.TrackerAudioEngine.queueWriter.node.port.postMessage({ type: 'hard_reset' }); } } btnPlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`; progressFill.style.width = `0%`; progressText.innerText = `--:-- / --:--`; if (typeof lucide !== 'undefined') lucide.createIcons(); });
   btnNext.addEventListener("click", () => { if (playingIndex < currentPlaylist.length - 1) { playingIndex++; selectedIndex = playingIndex; loadAndPlayTrack(); } });
   btnPrev.addEventListener("click", () => { if (playingIndex > 0) { playingIndex--; selectedIndex = playingIndex; loadAndPlayTrack(); } });
   volumeSlider.addEventListener("input", (e) => { const val = parseInt(e.target.value, 10); sliderLabel.innerText = `볼륨`; document.getElementById("sliderValue").innerText = `${val}%`; if (window.TrackerAudioEngine) window.TrackerAudioEngine.setMasterVolume(val); });

@@ -102,29 +102,29 @@
           <div class="dos-panel-content">
             <div class="dos-progress-bar" style="margin-bottom: 8px;">
           <!-- 상단 진행바 및 타임 레이아웃 컴포넌트 -->
-          <div id="progressBarContainer" class="dos-progress-container" style="display: flex; align-items: center; gap: 8px; width: 100%; cursor: pointer;">
+          <div id="progressBarContainer" class="dos-progress-container" style="display: flex;align-items: center;gap: 8px;width: 100%;cursor: pointer;padding-top: 2px;padding-left: 2px;">
             <div class="dos-progress-bar-border" style="flex: 1; height: 14px; background-color: #000000; border: 1px solid var(--border-dark); position: relative;">
               <!-- 실시간 채움 레이어 -->
               <div id="progressFill" style="width: 0%; height: 100%; background-color: #54ff54; transition: width 0.05s linear;"></div>
             </div>
             <!-- 디지털 타임 전광판 -->
-            <span id="progressText" style="font-family: monospace; min-width: 90px; text-align: right; color: var(--color-gray); font-size: 12px;">0:00 / 0:00</span>
+            <span id="progressText" style="font-family: monospace;min-width: 60px;text-align: right;color: var(--color-gray);font-size: 12px;padding-right: 8px;--darkreader-inline-color: var(--darkreader-text--color-gray, var(--darkreader-text-000000, #e8e6e3));">0:00 / 0:00</span>
           </div>
             </div>
             
           <!-- 볼륨 제어 그룹 패널 (음소거 버튼 이식형) -->
           <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
-            <!-- 1. 좌측 음소거 토글 버튼 -->
-            <button id="btnMute" class="dos-button-control" title="음소거 (Mute)" style="padding: 2px 6px; min-width: 32px; height: 22px; font-size: 11px;">
-              🔊
-            </button>
-            
             <!-- 2. 중앙 슬라이더 밸브 -->
             <div class="dos-slider-container" style="flex: 1; display: flex; align-items: center; gap: 6px;">
               <span id="sliderLabel" class="dos-slider-label">볼륨</span>
               <input type="range" id="volumeSlider" class="dos-slider" min="0" max="100" value="70">
               <span id="sliderValue" class="dos-slider-value" style="min-width: 32px; text-align: right;">70%</span>
             </div>
+            
+            <!-- 1. 좌측 음소거 토글 버튼 -->
+            <button id="btnMute" class="dos-button-control" title="음소거 (Mute)" style="padding: 2px 6px; min-width: 32px; height: 22px; font-size: 11px;">
+              🔊
+            </button>
           </div>
           </div>
         </div>

@@ -373,7 +373,7 @@ body {
 .dos-tempo-meter {
   font-family: inherit;
   font-size: 11px;
-  color: var(--color-gray);
+  /*color: var(--color-gray);*/
   letter-spacing: 1px;
   font-weight: bold;
   display: flex;
@@ -456,4 +456,12 @@ body {
 .dos-playlist-scroll-area {
   scrollbar-width: thin !important;
   scrollbar-color: #3e3e5c #12121c !important;
+}
+
+/*<i data-lucide="pause"></i>*/
+.dos-button > i[data-lucide="pause"] {
+  /*background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fw3.org%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22currentColor%22%3E%0A%20%20%3Crect%20x%3D%226%22%20y%3D%224%22%20width%3D%224%22%20height%3D%2216%22%20rx%3D%221%22%3E%3C%2Frect%3E%0A%20%20%3Crect%20x%3D%2214%22%20y%3D%224%22%20width%3D%224%22%20height%3D%2216%22%20rx%3D%221%22%3E%3C%2Frect%3E%0A%3C%2Fsvg%3E");*/
+  background-image: url("https://e7.pngegg.com/pngimages/312/319/png-clipart-computer-icons-button-pause-button-angle-text.png");
+  background-repeat: no-repeat;
+  background-size: contain;
 }
