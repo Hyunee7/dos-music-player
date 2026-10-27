@@ -32,7 +32,7 @@
       <div class="dos-panel raised modal-panel">
         <div class="dos-panel-title">
           <span>지원 포맷</span>
-          <button id="closeDialogBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><i data-lucide="x"></i></button>
+          <button id="closeDialogBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg><i data-lucide="x"></i></button>
         </div>
         <div class="dos-panel-content">
           <div class="dos-list dialog-scroll-area">
@@ -40,8 +40,14 @@
             <div><span class="format-ext">IMS</span> - IMPlay Song 포맷 (한국 도스 음악)</div>
             <div><span class="format-ext">ROL</span> - AdLib Visual Composer 포맷</div>
             <div><span class="format-ext">VGM</span> - Video Game Music 포맷</div>
+            <div><span class="format-ext">MID</span> - MIDI 오디오 파일 포맷</div>
             <div style="color: var(--text-main); margin-top: 12px; margin-bottom: 4px;">[ MOD / Tracker ]</div>
             <div><span class="format-ext">MOD</span> / <span class="format-ext">XM</span> / <span class="format-ext">S3M</span> / <span class="format-ext">IT</span></div>
+            <hr></hr>
+            <div>
+              <a href="https://www.flaticon.com/kr/free-icons/-" title="음악 공책 아이콘"
+			    target='blank' style="text-decoration: none;"><img src=https://cdn-icons-png.flaticon.com/128/9426/9426929.png width="16px"> <font size=-2>제작자: juicy_fish - Flaticon</font></a>
+            </div>
           </div>
         </div>
       </div>
@@ -102,13 +108,13 @@
           <div class="dos-panel-content">
             <div class="dos-progress-bar" style="margin-bottom: 8px;">
           <!-- 상단 진행바 및 타임 레이아웃 컴포넌트 -->
-          <div id="progressBarContainer" class="dos-progress-container" style="display: flex;align-items: center;gap: 8px;width: 100%;cursor: pointer;padding-top: 2px;padding-left: 2px;">
+          <div id="progressBarContainer" class="dos-progress-container">
             <div class="dos-progress-bar-border" style="flex: 1; height: 14px; background-color: #000000; border: 1px solid var(--border-dark); position: relative;">
               <!-- 실시간 채움 레이어 -->
               <div id="progressFill" style="width: 0%; height: 100%; background-color: #54ff54; transition: width 0.05s linear;"></div>
             </div>
             <!-- 디지털 타임 전광판 -->
-            <span id="progressText" style="font-family: monospace;min-width: 60px;text-align: right;color: var(--color-gray);font-size: 12px;padding-right: 8px;--darkreader-inline-color: var(--darkreader-text--color-gray, var(--darkreader-text-000000, #e8e6e3));">0:00 / 0:00</span>
+            <span id="progressText" style="font-family: NeoDunggeunmo;min-width: 60px;text-align: right;color: var(--color-gray);font-size: 13px;padding-right: 8px;--darkreader-inline-color: var(--darkreader-text--color-gray, var(--darkreader-text-000000, #e8e6e3));">0:00 / 0:00</span>
           </div>
             </div>
             
@@ -138,7 +144,7 @@
         <div class="dos-panel raised flex-1" style="display: flex; flex-direction: column; height: 100%;">
           <div class="dos-panel-title">
             <span id="listTitle">🎵 샘플 음악</span>
-            <button id="helpBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><i data-lucide="help-circle"></i></button>
+            <button id="helpBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-question-mark" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg><i data-lucide="help-circle"></i></button>
           </div>
           <div class="dos-panel-content" style="flex: 1; min-height: 0; padding: 4px;">
             <div class="dos-list dos-box-inner dos-playlist-scroll-area">
@@ -168,7 +174,8 @@
         <div id="lyricsDisplay" class="lyrics-viewport">
           <div class="lyrics-fallback">
 			READY TO PLAY...<br><br>
-			<a href="https://www.flaticon.com/kr/free-icons/-" title="음악 공책 아이콘" target='blank'><img src=https://cdn-icons-png.flaticon.com/128/9426/9426929.png width="16px"> 제작자: juicy_fish - Flaticon</a>
+			<a href="https://www.flaticon.com/kr/free-icons/-" title="음악 공책 아이콘"
+			  target='blank' style="text-decoration: none;"><img src=https://cdn-icons-png.flaticon.com/128/9426/9426929.png width="16px"> <font size=-2>제작자: juicy_fish - Flaticon</font></a>
 		  </div>
         </div>
       </div>
@@ -178,6 +185,7 @@
     <!-- 4. 최하단 정보 상태바 -->
     <div class="dos-status-bar">
       <div id="statusBarText" class="dos-status-item">대기</div>
+      <div id="timeText" class="dos-status-item">--:--:--</div>
     </div>
 
   <!-- index.html 최하단 스크립트 배치부 -->
@@ -195,5 +203,9 @@
   
   <!-- 4. 마지막으로 위 노드들을 제어하고 이벤트를 연결하는 player.js를 구동합니다 -->
   <script src="./player.js"></script>
+  
+  <!-- 5. 현재시각 출력 -->
+  <script src="./timer.js"></script>
+  <!--  -->
 </body>
 </html>

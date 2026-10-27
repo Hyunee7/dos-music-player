@@ -105,7 +105,7 @@ COMB_SPECIAL_MAP : {
                     }
 					
         // 2. 그래픽문자 / 일본어 / 한자 영역 판별 (b2의 MSB가 1인 경우)
-					/**/
+					/** /
         if (b2 >= 0x80) {
             // 상용 조합형 특수문자 행(Row) 인덱스 계산
             if (this.COMB_SPECIAL_MAP[b1]) {

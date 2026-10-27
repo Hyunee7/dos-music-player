@@ -8,8 +8,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // .IMS, .ROL, .VGM, .MOD, .XM, .S3M 전 포맷 규격이 결합된 총 14곡의 순정 보관함 목록
     let currentPlaylist = [
+        { filename: "COM-COOL.IMS", url: "./folder/COM-COOL.IMS", format: "IMS", title: "COM-COOL" },
+        { filename: "COM-CHIC.IMS", url: "./folder/COM-CHIC.IMS", format: "IMS", title: "COM-CHIC" },
+        { filename: "COM-PAGI.IMS", url: "./folder/COM-PAGI.IMS", format: "IMS", title: "COM-PAGI" },
+        { filename: "COM-ROO3.IMS", url: "./folder/COM-ROO3.IMS", format: "IMS", title: "COM-ROO3" },
+        { filename: "HUB-MOSQ.IMS", url: "./folder/HUB-MOSQ.IMS", format: "IMS", title: "HUB-MOSQ" },
         { filename: "JAM-FIVE.IMS", url: "./folder/JAM-FIVE.IMS", format: "IMS", title: "JAM-FIVE" },
         { filename: "JAM-NADI.IMS", url: "./folder/JAM-NADI.IMS", format: "IMS", title: "JAM-NADI" },
+        { filename: "MM-BANK.IMS", url: "./folder/MM-BANK.IMS", format: "IMS", title: "MM-BANK" },
+        { filename: "MM-PRO.IMS", url: "./folder/MM-PRO.IMS", format: "IMS", title: "MM-PRO" },
         { filename: "MYSTERY-.IMS", url: "./folder/MYSTERY-.IMS", format: "IMS", title: "MYSTERY-" },
         { filename: "SHC.IMS", url: "./folder/SHC.IMS", format: "IMS", title: "SHC" },
         { filename: "COCKTAIL.IMS", url: "./folder/COCKTAIL.IMS", format: "IMS", title: "COCKTAIL" },
@@ -19,7 +26,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         { filename: "4JSTAMNT.ROL", url: "./folder/4JSTAMNT.ROL", format: "ROL", title: "4JSTAMNT" },
         { filename: "Feena.vgm", url: "./folder/Feena.vgm", format: "VGM", title: "Feena (Ys I)" },
         { filename: "Final Battle.vgm", url: "./folder/Final Battle.vgm", format: "VGM", title: "Final Battle" },
+        { filename: "GENIUS-X.S3M", url: "./folder/GENIUS-X.S3M", format: "S3M", title: "GENIUS-X" },
         { filename: "skyrider.s3m", url: "./folder/skyrider.s3m", format: "S3M", title: "Skyrider" },
+        { filename: "B-BOYM~2.MOD", url: "./folder/B-BOYM~2.MOD", format: "MOD", title: "B-BOYM~2" },
         { filename: "space_debris.mod", url: "./folder/space_debris.mod", format: "MOD", title: "Space Debris" },
         {
             filename: "unreeeal_superhero_3.xm",
@@ -82,11 +91,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         inactive: "#1a1a26",
         low: "#00a800",
         mid: "#a8a800",
-        high: "#a8a800",
+        high: "#7b1818",
         peak: "#54ffff",
         barBg: "#000000",
     };
 
+	// 컨테이너에 16개 스팩트럼바 캔버스를 그림
     const spectrumContainer = document.getElementById("spectrumContainer");
     const canvasElements = [];
     const canvasContexts = [];
@@ -101,6 +111,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         canvasElements.push(canv);
     }
 
+	// 화면크기가 바뀌면 다시그림
     function resizeSpectrumCanvases() {
         const dpr = window.devicePixelRatio || 1;
         canvasContexts.length = 0;
@@ -147,6 +158,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             div.addEventListener("click", () => {
                 selectedIndex = idx;
+                //playingIndex = idx;
+				const audioEngine = window.TrackerAudioEngine;
+				const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
+				if (audioState && audioState.currentPositionMs > 0) { // 일시정지 가 아니면 연주할 곡으로 선택함
+				}else{
+					playingIndex = idx;
+				}
                 renderPlaylist();
             });
             div.addEventListener("dblclick", () => {
@@ -441,14 +459,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const audioEngine = window.TrackerAudioEngine;
             const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
 
-//window['audioState'] = audioState;
-//console.log(!audioState,' || ',!currentIssData,' || ',(audioState.currentPositionMs === 0 && !audioState.isPlaying))
             if (!audioState || !currentIssData || (audioState.currentPositionMs === 0 && !audioState.isPlaying)) {
-//console.log('audioState.totalDurationMs',audioState.totalDurationMs)
-//if(!audioState.totalDurationMs){ // ROL 파일의 전체 길이가 표시되지 않아 보정함.
-//	if(audioState.currentEngineType == 'adplug') audioState.totalDurationMs = audioEngine.adplugModuleInstance._emu_get_max_position()
-//}
-//console.log('audioState.totalDurationMs',audioState.totalDurationMs)
                 const tempoElement = document.getElementById("tempoDisplayValue");
                 if (tempoElement) tempoElement.innerText = "---";
                 lyricsDisplay.innerHTML = `가사 음슴`;
@@ -516,7 +527,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 rawHardwareTick = (currentMs / 1000) * ((bTempo * tBeat) / 60);
             }
 
-            const adjustedTick = rawHardwareTick / 8 -24; // 2026-10-04 [-24]는 자막속도 오차 보정값
+            const adjustedTick = rawHardwareTick / 8 ; // 2026-10-04 [-24]는 자막속도 오차 보정값
 
             let left = 0;
             let right = currentIssData.records.length - 1;
@@ -534,6 +545,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const currentRecord = currentIssData.records[resultIndex];
                 const rawLine = currentIssData.scripts[currentRecord.line] || "";
                 const currentLine = rawLine.trimEnd();
+console.log(rawHardwareTick,adjustedTick,resultIndex,rawLine)
                 let nextLine = "";
                 if (resultIndex < currentIssData.records.length - 1) {
                     for (let i = resultIndex + 1; i < currentIssData.records.length; i++) {
@@ -656,6 +668,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         }
                     } catch (e) {}
                 }
+window['iss']=currentIssData;
             }
 
             // [해결 2] 오디오 워크렛 스레드의 다음 트랙 연주 종료 확인 핸들러를 순정 규격 그대로 유지하여 시동 잠금 해제!
@@ -701,7 +714,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (scrollParent) {
                 scrollParent.scrollTop = playingIndex * ITEM_HEIGHT - scrollParent.clientHeight / 2 + ITEM_HEIGHT / 2;
             }
-            runStateSyncLoop();
+            runStateSyncLoop(); // 상태 체크 루프 시작
             renderPlaylist();
         } catch (err) {
             console.error(err);
@@ -888,7 +901,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         statusBarText.innerText = "트랙 정렬 배치 완료";
     }
 
-    btnPlay.addEventListener("click", () => {
+    btnPlay.addEventListener("click", () => { // 재생/일시정지
         if (currentPlaylist.length === 0) return;
         const audioEngine = window.TrackerAudioEngine;
         const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
@@ -900,6 +913,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             btnPlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><rect x="1" y="4" width="4" height="16" rx="1"></rect><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`;
 	        const track = currentPlaylist[playingIndex];
 			statusBarText.innerText = `일시정지 - ${track.title}`;
+	        clearInterval(stateUpdateInterval); // 상태 체크 루프 중지
         } else {                                  // 일시정지 후 이어재생
             if (audioState && audioState.currentPositionMs > 0) {
                 if (audioEngine.queueWriter && audioEngine.queueWriter.node) {
@@ -912,12 +926,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }
 				const track = currentPlaylist[playingIndex];
 				statusBarText.innerText = `재생중 - ${track.title}`;
+				runStateSyncLoop(); // 상태 체크 루프 시작
             } else loadAndPlayTrack();
         }
         if (typeof lucide !== "undefined") lucide.createIcons();
     });
 
-    btnStop.addEventListener("click", () => {
+    btnStop.addEventListener("click", () => { // 정지
         if (window.TrackerAudioEngine) {
             window.TrackerAudioEngine.stop();
             if (window.TrackerAudioEngine.queueWriter && window.TrackerAudioEngine.queueWriter.node) {
@@ -929,6 +944,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         progressText.innerText = `--:-- / --:--`;
         if (typeof lucide !== "undefined") lucide.createIcons();
 		statusBarText.innerText = `재생중지`;
+        clearInterval(stateUpdateInterval); // 상태 체크 루프 중지
+
     });
     btnNext.addEventListener("click", () => {
         if (playingIndex < currentPlaylist.length - 1) {
