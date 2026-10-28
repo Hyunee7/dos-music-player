@@ -189,6 +189,8 @@ COMB_SPECIAL_MAP : {
         }
         
         if(DEBUG) console.log(`%c[JohabDecoder] 변환 완료: "${result}"`, "color: #00ffcc; font-weight: bold; border-top: 1px solid #00ffcc; padding-top: 2px;");
-        return result.trim();
+        //return result.trim(); 
+		// 가사 앞에 공백이 있는 경우 위치 계산에 오류가 생기므로 trim() 하지 않는다.
+        return result;
     }
 };

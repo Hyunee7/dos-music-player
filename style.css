@@ -9,8 +9,11 @@
 
 /**/
 :root {
-  --bg-main: #0000a8;       /* 고전 도스 블루 */
-  --bg-select: #00a8a8;     /* 선택 및 청록색 */
+  /*--bg-main: #0000a8;*/       /* 고전 도스 블루 */
+  /*--bg-main: #6b7a8f;*/
+  --bg-main: #14141c;
+  /*--bg-select: #00a8a8;*/     /* 선택 및 청록색 */
+  --bg-select: #2d2d3a;     /* 선택 배경 */
   --text-main: #a8a8a8;     /* 기본 실버 텍스트 */
   --color-white: #ffffff;
   --color-yellow: #ffff54;
@@ -18,18 +21,23 @@
   --color-gray: #7f7f7f;
   --border-highlight: #ffffff;
   --border-dark: #545454;
-  --toggle-active-bg: #00a8a8;
+  /*--toggle-active-bg: #00a8a8;*/
+  --toggle-active-bg: #404141;
   --toggle-active-text: #ffffff;
 
   /* 비주얼라이저 전용 고전 LED 색상 배정 */
   --segment-inactive: #1a1a26;
-  --meter-low: #00a800;     /* 기본 주파수 녹색 */
-  --meter-mid: #a8a800;     /* 중간 주파수 황색 */
-  --meter-high: #a80000;    /* 임계 주파수 적색 */
-  --meter-peak: #54ffff;    /* 피크 탑 홀드 스카이블루 */
+  /*--meter-low: #00a800; */    /* 기본 주파수 녹색 */
+  /*--meter-mid: #a8a800; */    /* 중간 주파수 황색 */
+  /*--meter-high: #a80000;*/    /* 임계 주파수 적색 */
+  /*--meter-peak: #54ffff;*/    /* 피크 탑 홀드 스카이블루 */
+  --meter-low: #4a5568;     /* 기본 주파수 */
+  --meter-mid: #6b7a8f;     /* 중간 주파수 */
+  --meter-high: #8fa0b8;    /* 임계 주파수 */
+  --meter-peak: #FFFF00;    /* 피크 탑 홀드 */
   --spectrum-bar-bg: #000000;
   
-  /* 스펙트럼바 박스 색상 */
+  /* 스펙트럼바,버튼 박스 색상 */
   --border-highlight: #3f3f50;
   --border-light: #3f3f50;
   --border-shadow: #0d0d12;
@@ -167,8 +175,8 @@ body { /*2* /
     gap: 8px;
     width: 100%;
     cursor: pointer;
-    padding-top: 1px;
-    padding-left: 2px;
+    /*padding-top: 1px;
+    padding-left: 2px;*/
 }
 /* */
 
@@ -215,7 +223,8 @@ body { /*2* /
 }
 
 .dos-button {
-  background-color: var(--color-gray);
+  /*background-color: var(--color-gray);*/
+  background-color: #252530;
   color: #000000;
   border-top: 2px solid var(--border-highlight);
   border-left: 2px solid var(--border-highlight);
@@ -322,7 +331,8 @@ body { /*2* /
   font-size: 12px;
   font-weight: bold;
   background-color: #000;
-  color: var(--color-cyan);
+  /*color: var(--color-cyan);*/
+  color:#2563eb;
   border: 1px solid var(--color-cyan);
   margin-right: 6px;
   text-transform: uppercase;
@@ -640,8 +650,8 @@ body { /*2* /
         gap: 8px;
         width: 100%;
         cursor: pointer;
-        padding-top: 1px;
-        padding-left: 2px;
+        /*padding-top: 1px;
+        padding-left: 2px;*/
     }
     /* */
 }

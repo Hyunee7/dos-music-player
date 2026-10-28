@@ -18,7 +18,7 @@
         </div>
         <div class="dos-panel-content">
           <div id="folderNameDisplay" class="folder-name">./FOLDER</div>
-          <div id="loadingStatus" class="loading-status">파일 로딩 중... 0 / 0</div>
+          <div id="loadingStatus" class="loading-status">파일 로딩 중... </div>
           <div class="current-file-box">
             <div id="currentLoadingFile" class="current-file-text"></div>
           </div>
@@ -56,7 +56,7 @@
     <!-- 1. 최상단 타이틀 바 -->
     <div class="dos-title-bar">
       DOS 음악 플레이어
-      <span> IMS Player v0.0.6</span>
+      <span> IMS Player v0.5.3</span>
     </div>
 
     <!-- 2. 메인 콘텐츠 그리드 -->
@@ -107,15 +107,15 @@
         <div class="dos-panel raised flex-shrink-0">
           <div class="dos-panel-content">
             <div class="dos-progress-bar" style="margin-bottom: 8px;">
-          <!-- 상단 진행바 및 타임 레이아웃 컴포넌트 -->
-          <div id="progressBarContainer" class="dos-progress-container">
-            <div class="dos-progress-bar-border" style="flex: 1; height: 14px; background-color: #000000; border: 1px solid var(--border-dark); position: relative;">
-              <!-- 실시간 채움 레이어 -->
-              <div id="progressFill" style="width: 0%; height: 100%; background-color: #54ff54; transition: width 0.05s linear;"></div>
-            </div>
-            <!-- 디지털 타임 전광판 -->
-            <span id="progressText" style="font-family: NeoDunggeunmo;min-width: 60px;text-align: right;color: var(--color-gray);font-size: 13px;padding-right: 8px;--darkreader-inline-color: var(--darkreader-text--color-gray, var(--darkreader-text-000000, #e8e6e3));">0:00 / 0:00</span>
-          </div>
+              <!-- 상단 진행바 및 타임 레이아웃 컴포넌트 -->
+              <div id="progressBarContainer" class="dos-progress-container">
+                <div class="dos-progress-bar-border" style="flex: 1;height: 20px;background-color: #000000;position: relative;">
+                  <!-- 실시간 채움 레이어 -->
+                  <div id="progressFill" style="width: 30%;height: 100%;background-color: #4a5568;transition: width 0.05s linear;position: absolute;"></div>
+                  <!-- 디지털 타임 전광판 -->
+                  <span id="progressText" style="position: absolute;width: 100%;font-family: NeoDunggeunmo;min-width: 100px;text-align: center;color: var(--color-gray);font-size: 16px;padding-right: 8px;--darkreader-inline-color: var(--darkreader-text--color-gray, var(--darkreader-text-000000, #e8e6e3));">0:00 / 0:00</span>
+                </div>
+              </div>
             </div>
             
           <!-- 볼륨 제어 그룹 패널 (음소거 버튼 이식형) -->

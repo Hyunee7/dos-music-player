@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         { filename: "HUB-MOSQ.IMS", url: "./folder/HUB-MOSQ.IMS", format: "IMS", title: "HUB-MOSQ" },
         { filename: "JAM-FIVE.IMS", url: "./folder/JAM-FIVE.IMS", format: "IMS", title: "JAM-FIVE" },
         { filename: "JAM-NADI.IMS", url: "./folder/JAM-NADI.IMS", format: "IMS", title: "JAM-NADI" },
+        { filename: "JMSTOMMY.IMS", url: "./folder/JMSTOMMY.IMS", format: "IMS", title: "JMSTOMMY" }, /* 가사 테스트용 */
+        { filename: "TS-DEUX4.IMS", url: "./folder/TS-DEUX4.IMS", format: "IMS", title: "TS-DEUX4" }, /* 가사 테스트용 */
         { filename: "MM-BANK.IMS", url: "./folder/MM-BANK.IMS", format: "IMS", title: "MM-BANK" },
         { filename: "MM-PRO.IMS", url: "./folder/MM-PRO.IMS", format: "IMS", title: "MM-PRO" },
         { filename: "MYSTERY-.IMS", url: "./folder/MYSTERY-.IMS", format: "IMS", title: "MYSTERY-" },
@@ -87,12 +89,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         peakHoldTime: 0,
         peakFallSpeed: 0,
     }));
+	/*
     const masterColors = {
         inactive: "#1a1a26",
         low: "#00a800",
         mid: "#a8a800",
         high: "#7b1818",
         peak: "#54ffff",
+        barBg: "#000000",
+    };
+	*/
+    const masterColors = {
+        inactive: "#1a1a26",
+        low: "#4a5568",
+        mid: "#6b7a8f",
+        high: "#8fa0b8",
+        peak: "#aaaaaa",
         barBg: "#000000",
     };
 
@@ -527,7 +539,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 rawHardwareTick = (currentMs / 1000) * ((bTempo * tBeat) / 60);
             }
 
-            const adjustedTick = rawHardwareTick / 8 ; // 2026-10-04 [-24]는 자막속도 오차 보정값
+            const adjustedTick = rawHardwareTick / 8 ; // 가사정보 참조용 Tick
 
             let left = 0;
             let right = currentIssData.records.length - 1;
@@ -545,7 +557,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const currentRecord = currentIssData.records[resultIndex];
                 const rawLine = currentIssData.scripts[currentRecord.line] || "";
                 const currentLine = rawLine.trimEnd();
-console.log(rawHardwareTick,adjustedTick,resultIndex,rawLine)
+//                const currentLine = rawLine;
+//console.log(rawHardwareTick,adjustedTick,resultIndex,rawLine)
                 let nextLine = "";
                 if (resultIndex < currentIssData.records.length - 1) {
                     for (let i = resultIndex + 1; i < currentIssData.records.length; i++) {
@@ -575,7 +588,7 @@ console.log(rawHardwareTick,adjustedTick,resultIndex,rawLine)
 					<div style="font-weight: 500; text-align: center; width: 100%; word-break: break-all; line-height: 1.4;">
 					  <span style="color: var(--lyrics-highlight); font-weight: bold; display: inline;">${currentLine.substring(0, highlightEnd)}</span><span style="color: var(--lyrics-normal); display: inline;">${currentLine.substring(highlightEnd)}</span>
 					</div>
-					<div style="font-size: 13px; color: var(--lyrics-normal); opacity: 0.4; min-height: 18px; margin-top: 6px; text-align: center; width: 100%; white-space: pre-wrap;">${nextLine}</div>
+					<div style="font-size: 13px; color: var(--lyrics-normal); opacity: 0.4; min-height: 18px; margin-top: 6px; text-align: center; width: 100%;">${nextLine}</div>
 				  </div>`;
             }
         }, 80);

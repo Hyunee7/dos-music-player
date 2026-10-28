@@ -149,7 +149,8 @@ window.ChipTuneTitleParser = (function() {
       const records = [];
       for (let i = 0; i < recCount; i++) { if (offset + 5 > u8.length) break;
 	  const kasaTick = u8[offset] | (u8[offset + 1] << 8);
-	  const line = readInt8(u8[offset + 2]);
+	  //const line = readInt8(u8[offset + 2]);
+	  const line = u8[offset + 2]; // 부호 없는 값 이어야 함.
 	  const startX = readInt8(u8[offset + 3]);
 	  const widthX = readInt8(u8[offset + 4]); records.push({ kasaTick, line, startX, widthX }); offset += 5; }
       const scripts = [];
