@@ -153,12 +153,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             // 🎯 [연주 표시 핵심 주입선]
             // 현재 음악 카드가 소리 렌더링 출력을 기동하고 있으면서 내 플레이리스트 인덱스 번호가 일치할 때
             // 연주 중 표시 전용 특수 복고풍 반전 CSS 클래스명('dos-list-item-playing')을 실시간 강제 골인시킵니다!
+			var playingIcon = '';
             if (
                 idx === playingIndex &&
                 window.TrackerAudioEngine &&
                 window.TrackerAudioEngine.getPlaybackState()?.isPlaying
             ) {
                 div.classList.add("dos-list-item-playing");
+				playingIcon = '<span style="flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; color: var(--bg-main);"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume2 lucide-volume-2" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"></path><path d="M16 9a5 5 0 0 1 0 6"></path><path d="M19.364 18.364a9 9 0 0 0 0-12.728"></path></svg></span>';
             }
 
             div.style.height = `${ITEM_HEIGHT}px`;
@@ -166,7 +168,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             div.setAttribute("data-index", idx);
             const badge = `<span class="dos-badge">${track.format}</span>`;
             const titleSpan = `<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; pointer-events:none;">${track.title}</span>`;
-            div.innerHTML = `${badge}${titleSpan}`;
+            div.innerHTML = `${badge}${titleSpan}${playingIcon}`;
 
             div.addEventListener("click", () => {
                 selectedIndex = idx;
@@ -681,7 +683,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         }
                     } catch (e) {}
                 }
-window['iss']=currentIssData;
+window['iss']=currentIssData; // 개발용
             }
 
             // [해결 2] 오디오 워크렛 스레드의 다음 트랙 연주 종료 확인 핸들러를 순정 규격 그대로 유지하여 시동 잠금 해제!
@@ -719,7 +721,7 @@ window['iss']=currentIssData;
             btnNext.removeAttribute("disabled");
             statusBarText.innerText =
                 currentIssData && currentIssData.singer
-                    ? `재생중 - [가수: ${currentIssData.singer}] ${track.title}`
+                    ? `재생중 - [가수:${currentIssData.singer}] ${track.title}`
                     : `재생중 - ${track.title}`;
             if (typeof lucide !== "undefined") lucide.createIcons();
 
@@ -940,6 +942,7 @@ window['iss']=currentIssData;
 				const track = currentPlaylist[playingIndex];
 				statusBarText.innerText = `재생중 - ${track.title}`;
 				runStateSyncLoop(); // 상태 체크 루프 시작
+				renderPlaylist(); // 재생 목록 갱신(연주중 표시)
             } else loadAndPlayTrack();
         }
         if (typeof lucide !== "undefined") lucide.createIcons();
@@ -957,6 +960,7 @@ window['iss']=currentIssData;
         progressText.innerText = `--:-- / --:--`;
         if (typeof lucide !== "undefined") lucide.createIcons();
 		statusBarText.innerText = `재생중지`;
+		renderPlaylist(); // 재생 목록 갱신(연주중 표시 해제)
         clearInterval(stateUpdateInterval); // 상태 체크 루프 중지
 
     });

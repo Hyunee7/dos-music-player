@@ -418,7 +418,7 @@ body { /*2* /
    KARAOKE LYRICS DISPLAY SYSTEM DESIGN
    ═══════════════════════════════════════════════════════════════ */
 :root {
-  --lyrics-highlight: #54ff54; /* 노래방 특유의 밝은 연두색 발광 자막 */
+  --lyrics-highlight: #3ddc97; /* 노래방 특유의 밝은 연두색 발광 자막 */
   --lyrics-normal: #7f7f7f;    /* 대기 중인 가사의 기본 회색 */
 }
 
@@ -518,7 +518,7 @@ body { /*2* /
 
 /* 현재 백그라운드 재생 중인 칸에 은은하게 흐르는 도스 네온 오라 스펙 */
 .dos-list-item-playing {
-  border-left: 3px solid #54ff54 !important;
+  border-left: 3px solid #4a5568 !important;
   padding-left: 5px !important;
 }
 /* =========================================================================
