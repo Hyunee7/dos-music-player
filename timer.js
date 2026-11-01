@@ -1,23 +1,6 @@
 /**
  * timer.js 시계 출력
  */
-
-class Timer {
-  // 생성자: 객체의 속성을 초기화합니다.
-  constructor(id) {
-    this.id = id;
-	this.obj = {};
-  }
-
-  // 메서드: 객체가 공유하는 함수입니다.
-  greet() {
-    return `안녕하세요, 저는 ${this.name}입니다.`;
-  }
-}
-//new Timer('timeText');
-
-// 
-/**/
 document.addEventListener("DOMContentLoaded", async () => {
     const timeText = document.getElementById("timeText"); // 시각 출력할 곳
 	const timer = null; // 인터벌 개체를 저장할 버퍼
@@ -46,4 +29,3 @@ document.addEventListener("DOMContentLoaded", async () => {
 	updateClock(); // 현재 시각 출력
 	nowTimeStart();
 });
-/**/

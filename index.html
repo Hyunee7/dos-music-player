@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DOS 음악 플레이어 (IMS Player)</title>
+  <title>DOS 음악 플레이어 (DMPlayer)</title>
   <link rel="stylesheet" type="text/css" href="./style.css">
 </head>
 <body>
@@ -32,21 +32,44 @@
       <div class="dos-panel raised modal-panel">
         <div class="dos-panel-title">
           <span>지원 포맷</span>
-          <button id="closeDialogBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg><i data-lucide="x"></i></button>
+          <button id="closeDialogBtn" style="background:none; border:none; color:inherit; cursor:pointer;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
         </div>
         <div class="dos-panel-content">
-          <div class="dos-list dialog-scroll-area">
+          <div class="dos-list dialog-scroll-area dos-playlist-scroll-area">
             <div style="color: var(--text-main); margin-bottom: 4px;">[ AdLib / OPL ]</div>
-            <div><span class="format-ext">IMS</span> - IMPlay Song 포맷 (한국 도스 음악)</div>
-            <div><span class="format-ext">ROL</span> - AdLib Visual Composer 포맷</div>
-            <div><span class="format-ext">VGM</span> - Video Game Music 포맷</div>
-            <div><span class="format-ext">MID</span> - MIDI 오디오 파일 포맷</div>
+            <div><span class="format-ext">AMD</span> - Elyssis의 AMUSIC Adlib Tracker</div>
+            <div><span class="format-ext">D00</span> - Vibrants의 EdLib</div>
+            <div><span class="format-ext">DMO</span> - TwinTeam의 Twin TrackPlayer</div>
+            <div><span class="format-ext">DRO</span> - DOSBox Raw OPL</div>
+            <div><span class="format-ext">DTM</span> - DeFy의 DeFy Adlib Tracker</div>
+            <div><span class="format-ext">IMS</span> - IMPlay Song (한국 도스 음악)</div>
+            <div><span class="format-ext">LAA</span> - LucasArts의 AdLib Audio 파일</div>
+            <div><span class="format-ext">M  </span> - Origin AdLib Music</div>
+            <div><span class="format-ext">MID</span> - MIDI 오디오 파일</div>
+            <div><span class="format-ext">MSC</span> - AdLib MSCplay</div>
+            <div><span class="format-ext">RAW</span> - RDOS의 RdosPlay RAW 파일</div>
+            <div><span class="format-ext">ROL</span> - AdLib Visual Composer</div>
+            <div><span class="format-ext">SNG</span> - SNGPlay / Faust Music Creator / Adlib Tracker 1.0</div>
+            <div title=" SOP (0.1판 - 현재 NOTE/W 1.0 beta로 만들어진파일의 버전이 0.1판입니다) 파일을 지원하며 그에 따라 20 채널까지사용할 수 있다는 특징이 있습니다. "><span class="format-ext">SOP</span> - 이호범(sopepos)의 Note/W</div>
+            <div><span class="format-ext">VGM</span> - Video Game Music</div>
+            <div><span class="format-ext">XAD</span> - Riven the Mage의 eXotic ADlib</div>
+
             <div style="color: var(--text-main); margin-top: 12px; margin-bottom: 4px;">[ MOD / Tracker ]</div>
-            <div><span class="format-ext">MOD</span> / <span class="format-ext">XM</span> / <span class="format-ext">S3M</span> / <span class="format-ext">IT</span></div>
-            <hr></hr>
+            <div><span class="format-ext">IT </span> - Impulse Tracker 모듈    </div>
+            <div><span class="format-ext">MOD</span> - ProTracker / NoiseTracker   </div>
+            <div><span class="format-ext">S3M</span> - Scream Tracker 3 모듈   </div>
+            <div><span class="format-ext">XM </span> - FastTracker 2 확장 모듈 </div>
+            
+            <hr />
+            <div style="color: var(--text-main); margin-top: 12px; margin-bottom: 4px;">[제작 참고]</div>
+            <div>•QuickBASIC (gcjjyy@gmail.com) 님의 <a href="https://qb.oscc.kr/" target="player">IMS Player</a> (<a href="https://github.com/gcjjyy/imsplay" target="github">GitHub</a>)</div>
+            <div> -> <a href="https://cafe.naver.com/olddos/102003" target="naver">도스박물관</a></div>
+            <div>•AdPlug (<a href="https://github.com/adplug/adplug" target="github">GitHub</a>)</div>
+            <div>•<a href="https://lib.openmpt.org/libopenmpt/" target="_blank">libopenmpt </a> (<a href="https://github.com/openmpt/openmpt" target="github">GitHub</a>)</div>
+            <div style="color: var(--text-main); margin-top: 12px; margin-bottom: 4px;">[favicon.ico 저작권 표시]</div>
             <div>
               <a href="https://www.flaticon.com/kr/free-icons/-" title="음악 공책 아이콘"
-			    target='blank' style="text-decoration: none;"><img src=https://cdn-icons-png.flaticon.com/128/9426/9426929.png width="16px"> <font size=-2>제작자: juicy_fish - Flaticon</font></a>
+			    target='blank' style="text-decoration: none;"><img src=https://cdn-icons-png.flaticon.com/128/9426/9426929.png width="16px"> <font size=-1>음악 공책 아이콘 제작자: juicy_fish - Flaticon</font></a>
             </div>
           </div>
         </div>
@@ -56,7 +79,7 @@
     <!-- 1. 최상단 타이틀 바 -->
     <div class="dos-title-bar">
       DOS 음악 플레이어
-      <span> IMS Player v0.5.3</span>
+      <span>DMPlayer v0.5.3</span>
     </div>
 
     <!-- 2. 메인 콘텐츠 그리드 -->
@@ -71,7 +94,7 @@
             <input type="file" id="folderInput" multiple webkitdirectory style="display: none;">
             <div id="dropZone" class="drop-zone">
               <div class="flex align-center gap-8 justify-center">
-                <span>📁</span> <span id="folderLabel">폴더를 드래그하거나 클릭하여 선택</span>
+                <span>📁</span> <label for="folderInput" id="folderLabel">폴더를 드래그하거나 클릭하여 선택</label>
               </div>
             </div>
             
@@ -111,7 +134,7 @@
               <div id="progressBarContainer" class="dos-progress-container">
                 <div class="dos-progress-bar-border" style="flex: 1;height: 20px;background-color: #000000;position: relative;">
                   <!-- 실시간 채움 레이어 -->
-                  <div id="progressFill" style="width: 30%;height: 100%;background-color: #4a5568;transition: width 0.05s linear;position: absolute;"></div>
+                  <div id="progressFill" style="width: 66%;height: 100%;background-color: #4a5568;transition: width 0.05s linear;position: absolute;"></div>
                   <!-- 디지털 타임 전광판 -->
                   <span id="progressText" style="position: absolute;width: 100%;font-family: NeoDunggeunmo;min-width: 100px;text-align: center;color: var(--color-gray);font-size: 16px;padding-right: 8px;--darkreader-inline-color: var(--darkreader-text--color-gray, var(--darkreader-text-000000, #e8e6e3));">0:00 / 0:00</span>
                 </div>
@@ -173,9 +196,9 @@
       <div class="dos-panel-content" style="flex: 1; min-height: 0; background-color: #000000; padding: 4px;">
         <div id="lyricsDisplay" class="lyrics-viewport">
           <div class="lyrics-fallback">
-			READY TO PLAY...<br><br>
-			<a href="https://www.flaticon.com/kr/free-icons/-" title="음악 공책 아이콘"
-			  target='blank' style="text-decoration: none;"><img src=https://cdn-icons-png.flaticon.com/128/9426/9426929.png width="16px"> <font size=-2>제작자: juicy_fish - Flaticon</font></a>
+			READY TO PLAY...<Br>
+            <div style="color: var(--text-main); margin-top: 12px; margin-bottom: 4px;">[제작 참고]</div>
+            QuickBASIC (gcjjyy@gmail.com) 님의<br><a href="https://qb.oscc.kr/" target="player">IMS Player</a> (<a href="https://github.com/gcjjyy/imsplay" target="github">GitHub</a>)
 		  </div>
         </div>
       </div>
@@ -185,7 +208,7 @@
     <!-- 4. 최하단 정보 상태바 -->
     <div class="dos-status-bar">
       <div id="statusBarText" class="dos-status-item">대기</div>
-      <div id="timeText" class="dos-status-item">--:--:--</div>
+      <div id="timeText" class="dos-status-item" style="display: flex;align-items: center;">--:--:--</div>
     </div>
 
   <!-- index.html 최하단 스크립트 배치부 -->

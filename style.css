@@ -24,7 +24,7 @@
   /*--toggle-active-bg: #00a8a8;*/
   --toggle-active-bg: #404141;
   --toggle-active-text: #ffffff;
-
+  --color-aqua: #38bdf8;
   /* 비주얼라이저 전용 고전 LED 색상 배정 */
   --segment-inactive: #1a1a26;
   /*--meter-low: #00a800; */    /* 기본 주파수 녹색 */
@@ -137,7 +137,7 @@ body { /*2* /
 
 .dos-title-bar {
   background-color: var(--color-gray);
-  color: #000000;
+  color: #e7e7e7;
   padding: 2px 8px;
   font-weight: bold;
   display: flex;
@@ -198,7 +198,7 @@ body { /*2* /
 
 .dos-panel-title {
   background-color: var(--color-gray);
-  color: #000000;
+  color: #e7e7e7;
   padding: 2px 6px;
   font-weight: bold;
   font-size: 14px;
@@ -223,9 +223,9 @@ body { /*2* /
 }
 
 .dos-button {
-  /*background-color: var(--color-gray);*/
-  background-color: #252530;
-  color: #000000;
+  /** /background-color: var(--color-gray);/**/
+  /**/background-color: #252530;/**/
+  color: #f4f4f5;
   border-top: 2px solid var(--border-highlight);
   border-left: 2px solid var(--border-highlight);
   border-bottom: 2px solid #000000;
@@ -333,7 +333,7 @@ body { /*2* /
   background-color: #000;
   /*color: var(--color-cyan);*/
   color:#2563eb;
-  border: 1px solid var(--color-cyan);
+  border: 1px solid var(--border-highlight);
   margin-right: 6px;
   text-transform: uppercase;
 }
@@ -385,7 +385,7 @@ body { /*2* /
 
 .dos-status-bar {
   background-color: var(--color-gray);
-  color: #000000;
+  color: #e7e7e7;
   padding: 2px 8px;
   margin-top: 6px;
   display: flex;
@@ -410,10 +410,10 @@ body { /*2* /
 .loading-status { color: var(--color-cyan); margin-bottom: 8px; }
 .current-file-box { background: var(--color-gray); border: 2px solid #000; padding: 4px; overflow: hidden; }
 .current-file-text { color: var(--color-yellow); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.dialog-scroll-area { padding: 8px; height: 250px; overflow-y: auto; font-size: 14px; line-height: 1.5; }
+.dialog-scroll-area { padding: 8px; height: 410px; overflow-y: auto; font-size: 14px; line-height: 1.5; }
 .modal-panel { width: 100%; }
 .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; }
-.modal-wrapper { position: absolute; top: 30%; left: 50%; width: 350px;/* height: 70%; */z-index: 101; transform: translate(-50%, -50%);}
+.modal-wrapper { position: absolute; top: 30%; left: 50%; width: 450px;/* height: 70%; */z-index: 101; transform: translate(-50%, -50%);}
 /* ═══════════════════════════════════════════════════════════════
    KARAOKE LYRICS DISPLAY SYSTEM DESIGN
    ═══════════════════════════════════════════════════════════════ */
@@ -422,13 +422,19 @@ body { /*2* /
   --lyrics-normal: #7f7f7f;    /* 대기 중인 가사의 기본 회색 */
 }
 
-/* 크레딧 링크 전용 장식 */
+/* 크레딧 링크 전용 장식 * /
 .dos-link-credits {
   color: var(--color-cyan);
   text-decoration: underline;
   cursor: pointer;
+}*/
+.dos-link-credits, a {
+    color: var(--color-aqua);
+    text-decoration: none;
+    font-weight: 400;
+    font-size: 16px;
 }
-.dos-link-credits:hover {
+.dos-link-credits:hover, a:hover{
   color: var(--color-white);
   background-color: var(--bg-select);
 }
@@ -592,7 +598,62 @@ body { /*2* /
     color: #2563eb;
 }
 
+/* 가사 출력 영역설정 */
+.lyrics-area {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  text-align: center;
+}
+
+/* 현재 가사 라인 */
+.lyrics-now {
+  font-weight: 500;
+  text-align: center;
+  width: 100%;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+/* 현재 진행 가사 라인 */
+.lyrics-next {
+  font-size: 13px;
+  color: var(--lyrics-normal);
+  opacity: 0.4;
+  min-height: 18px;
+  margin-top: 6px;
+  text-align: center;
+  width: 100%;
+}
+
+/* 가사 하이라이트 */
+.lyrics-highlight {
+  color: var(--text-main);
+  font-weight: bold;
+  display: inline;
+}
+
+/* 가사 일반 */
+.lyrics-normal {
+  color: var(--lyrics-normal);
+  display: inline;
+}
+
+.drop-zone label {
+  cursor:pointer;
+}
+
+hr {
+    background:#2d2d3a;
+    height:1px;
+    border:0;
+}
+
 /*
+    모바일 모드 : 가로폭 768px 이하 적용
 */
 @media(max-width: 768px) {
     .dos-container {
