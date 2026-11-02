@@ -634,12 +634,14 @@ body { /*2* /
   color: var(--text-main);
   font-weight: bold;
   display: inline;
+  white-space: pre-wrap; /* 여러 공백 허용 */
 }
 
 /* 가사 일반 */
 .lyrics-normal {
   color: var(--lyrics-normal);
   display: inline;
+  white-space: pre-wrap; /* 여러 공백 허용 */
 }
 
 .drop-zone label {

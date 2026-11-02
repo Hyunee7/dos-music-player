@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // .IMS, .ROL, .VGM, .MOD, .XM, .S3M .MID전 포맷 규격이 결합된 곡의 순정 보관함 목록
     let currentPlaylist = [
+        { filename: "BL-REF.IMS", url: "https://test.starbbs.kr/iss/dos/C_Drv/MUSIC/DATA/IMS1/BL-REF.IMS", format: "IMS", title: "BL-REF" },
         { filename: "SIM-STAT.IMS", url: "https://test.starbbs.kr/iss/dos/C_Drv/MUSIC/DATA/BEST/SIM-STAT.IMS", format: "IMS", title: "SIM-STAT" },
         { filename: "COM-COOL.IMS", url: "./folder/COM-COOL.IMS", format: "IMS", title: "COM-COOL" },
         { filename: "COM-CHIC.IMS", url: "./folder/COM-CHIC.IMS", format: "IMS", title: "COM-CHIC" },
@@ -43,7 +44,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     ];
 
     let playingIndex = -1;
-    let selectedIndex = -2;
+    let selectedIndex = 0;
     let repeatMode = "all";
     let stateUpdateInterval = null;
     let currentIssData = null;
@@ -387,9 +388,7 @@ window['playlist']=currentPlaylist; // 개발용
     }
 
 	/**
-	 * [재생상태 바 클릭시 클릭지점의 위치로 재생시점을 옮기는것]을 하려했으나
-	 * adplug 모듈(IMS,ROL)은 실패함. libopenmpt 로 일부만 가능한듯!
-	 * 현재는 재생완료를 탐색하여 다음곡으로 넘기는 용도로 사용됨.
+	 * 파일 버퍼 내용을 오디오 재생 모듈에 전달
 	 */
     function triggerBufferWriteFeed() {
         const audioEngine = window.TrackerAudioEngine;
@@ -487,7 +486,8 @@ window['playlist']=currentPlaylist; // 개발용
             return framesRendered;
         });
     }
-    window.triggerBufferWriteFeedGlobal = triggerBufferWriteFeed;
+    window.triggerBufferWriteFeedGlobal = triggerBufferWriteFeed; // 전역 함수 등록
+	
     /**
      * player.js - Part 4-A: 가사/시간 동기화 마스터 루프
      */
@@ -1050,7 +1050,7 @@ window.song = track; // 디버그용
 	async function handleFile(allFiles) {
         if (allFiles.length > 0) {
 //console.log(allFiles);
-            const allowedFiles = allFiles.filter((f) => /\.(mod|xm|s3m|it|ims|rol|vgm|mid|sop|msc|m|dro|dtm|dmo|xad|raw|laa|sng|amd|d00)$/i.test(f.name));
+            const allowedFiles = allFiles.filter((f) => /\.(mod|xm|s3m|it|ims|rol|vgm|mid|sop|msc|m|dro|dtm|dmo|sa2|xad|raw|laa|sng|amd|d00|vgz)$/i.test(f.name));
             const issFiles = allFiles.filter((f) => /\.iss$/i.test(f.name));
 			//console.log('issFiles',issFiles);
             const issMap = new Map(issFiles.map((f) => [f.name.toLowerCase().replace(/\.iss$/, ""), f]));
