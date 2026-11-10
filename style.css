@@ -612,20 +612,20 @@ body { /*2* /
 /* 현재 가사 라인 */
 .lyrics-now {
   font-weight: 500;
-  text-align: center;
+  text-align: justify;
   width: 100%;
   word-break: break-all;
   line-height: 1.4;
 }
 
-/* 현재 진행 가사 라인 */
+/* 다음 가사 라인 */
 .lyrics-next {
-  font-size: 13px;
+  /*font-size: 13px;*/
   color: var(--lyrics-normal);
   opacity: 0.4;
   min-height: 18px;
   margin-top: 6px;
-  text-align: center;
+  text-align: justify;
   width: 100%;
 }
 
@@ -634,15 +634,28 @@ body { /*2* /
   color: var(--text-main);
   font-weight: bold;
   display: inline;
-  white-space: pre-wrap; /* 여러 공백 허용 */
+    display: inline-block; /* 인라인 요소일 경우 필수 */
+    transform: scaleY(1.8); /* 1보다 크면 세로로 늘어남 (예: 1.5배) */
+    transform-origin: center; /* 기준점 설정 (기본값: center) */  
 }
 
 /* 가사 일반 */
 .lyrics-normal {
   color: var(--lyrics-normal);
   display: inline;
+    display: inline-block; /* 인라인 요소일 경우 필수 */
+    transform: scaleY(1.8); /* 1보다 크면 세로로 늘어남 (예: 1.5배) */
+    transform-origin: center; /* 기준점 설정 (기본값: center) */  
+}
+
+/* 가사창 폰트 자동조정 */
+.lyrics-next span, .lyrics-now span {
+  /* 5cqi는 컨테이너 가로 폭의 5% 크기 */
+  /* clamp(최소폰트크기, 반응형크기, 최대폰트크기) */
+  font-size: clamp(9px, 2.836cqi, 18px);
   white-space: pre-wrap; /* 여러 공백 허용 */
 }
+
 
 .drop-zone label {
   cursor:pointer;

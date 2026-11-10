@@ -1,8 +1,8 @@
 /**
  * player.js - Part 1: 전역 컨텍스트 캐싱 및 순정 ./folder 경로형 미디어 마스터 목록 선언 (순정 원복)
  */
-//const DEBUG = true; 
-const DEBUG = false; 
+//var DEBUG = true; 
+var DEBUG = false; 
 document.addEventListener("DOMContentLoaded", async () => {
     if (typeof lucide !== "undefined") lucide.createIcons();
 
@@ -637,7 +637,7 @@ window['playlist']=currentPlaylist; // 개발용
 					<div class="lyrics-now">
 					  <span class="lyrics-highlight">${currentLine.substring(0, highlightEnd)}</span><span class="lyrics-normal">${currentLine.substring(highlightEnd)}</span>
 					</div>
-					<div class="lyrics-next">${nextLine}</div>
+					<div class="lyrics-next"><span>${nextLine}</span></div>
 				  </div>`;
             }
         }, 80);

@@ -4,7 +4,7 @@
  * [실시간 로그 + 0xD483 상자선 + 0xD9BD/BE 하트 확장팩 + 일본어 가나 테이블 최종 완전판]
  */
  
-//if(DEBUG===undefined) var DEBUG=false;
+if(DEBUG===undefined) var DEBUG=false;
 const JohabDecoder = {
     // convert.c 명세 내의 SGtbl (단독 자모음 51선)
     sgTable: [
@@ -16,114 +16,132 @@ const JohabDecoder = {
     /**
      * 바이너리 버퍼에서 조합형 캐릭터 바이트 세그먼트를 읽어 유니코드로 복원합니다.
      */
-    decode: function(buffer, offset, length) {
-        const bytes = new Uint8Array(buffer, offset, length);
-        let result = "";
-        let i = 0;
+	// johab-decoder.js 의 decode 메서드를 아래 구조로 전면 교정합니다.
+	decode: function(buffer, offset, length) {
+		// 지정된 오프셋과 길이만큼 정확하게 슬라이싱하여 뷰를 생성합니다.
+		const bytes = new Uint8Array(buffer, offset, length);
+		let result = "";
+		let i = 0;
 
-        if(DEBUG) console.log(`%c[JohabDecoder] 디코딩 가동 - 오프셋: ${offset}, 길이: ${length}B`, "color: #00ffcc; font-weight: bold;");
+		if(DEBUG) console.log(`%c[JohabDecoder] 디코딩 가동 - 오프셋: ${offset}, 길이: ${length}B`, "color: #00ffcc; font-weight: bold;");
 
-        while (i < bytes.length) {
-            if (bytes[i] === 0) { 
-                i++; 
-                //continue; 
-				break; // EOF 처리
-            }
-            
-            if ((bytes[i] & 0x80) === 0) {
-                const asciiChar = String.fromCharCode(bytes[i]);
-                if(DEBUG) console.log(`[단계: 아스키] 오프셋[${i}]: 0x${bytes[i].toString(16).toUpperCase()} -> '${asciiChar}'`);
-                result += asciiChar;
-                i++;
-            } else {
-                if (i + 1 < bytes.length) {
-                    const b1 = bytes[i];
-                    const b2 = bytes[i + 1]; 
-					if (b2 == 0x00) {i++; continue;} /* 하위 바이트 ERROR */
-                    const combinedWordCode = (b1 << 8) | b2;
-                    const hexStr = combinedWordCode.toString(16).toUpperCase();
+		while (i < bytes.length) {
+			// 🎯 [근본 해결 1]: 64바이트 패딩 안에서 0x00을 만나면 break로 엔진을 멈추면 안 됩니다.
+			// 해당 줄(Line)의 유효 문자가 끝난 것이므로, 루프를 종료하되 안전하게 문자열을 반환해야 합니다.
+			if (bytes[i] === 0) { 
+				break; 
+			}
+			
+			// 아스키 문자 (영문, 숫자, 반각 공백) 처리
+			if ((bytes[i] & 0x80) === 0) {
+				const asciiChar = String.fromCharCode(bytes[i]);
+				if(DEBUG) console.log(`[단계: 아스키] 오프셋[${i}]: 0x${bytes[i].toString(16).toUpperCase()} -> '${asciiChar}'`);
+				result += asciiChar;
+				i++;
+			} else {
+				// 한글 및 상용 조합형 2바이트 처리
+				if (i + 1 < bytes.length) {
+					const b1 = bytes[i];
+					const b2 = bytes[i + 1]; 
 
-                    // 1. 그래픽 특수문자, 하트팩, 일본어 가나 맵 인터셉터 검사
-					//    매핑 테이블 활용
+					// 🎯 [근본 해결 2]: 하위 바이트 에러 시 뒤쪽 바이트가 도미노로 깨지는 인덱스 누수 차단
+					if (b2 === 0x00) {
+						break; 
+					}
+
+					const combinedWordCode = (b1 << 8) | b2;
+					const hexStr = combinedWordCode.toString(16).toUpperCase();
+
+					// 0. 삼벌식 무결성 수식 기반 초/중/종성 해체 주행
+					let chosung = ((b1 >> 2) & 0x1F) - 2;
+					let jungsung = ((b1 & 0x03) << 3) | ((b2 >> 5) & 0x07);
+					let origJungsung = jungsung; 
+					
+					if (jungsung > 7 && jungsung < 16) {
+						jungsung -= 5;
+					} else if (jungsung > 15 && jungsung < 24) {
+						jungsung -= 7;
+					} else if (jungsung > 25) {
+						jungsung -= 9;
+					} else {
+						jungsung -= 3;
+					}
+
+					let jongsung = (b2 & 0x1F) - 1;
+					let origJongsung = jongsung; 
+					if (jongsung > 16) {
+						jongsung -= 1;
+					}
+
+// 0. 조합형 코드를 초/중/종성 분리 
+// 1. 조합형 한글 코드 범위 계산
+// 2. 매핑테이블 검색 있으면 글자추출, 없으면 다음처리
+// 3. 조합형 한글코드가 맞으면 다음처리, 아니면 코드값 조합으로 UNICODE 추출 
+// 4. 조합형 한글코드로 판단하여 변환
+// 5. 예외) euc-kr 로 변환 -> 없으면 공백처리
+
+					// 1. 그래픽 특수문자, 하트팩, 일본어 가나 맵 인터셉터 검사
 					if(KSSMCODE[ combinedWordCode ] !== undefined){
-                        const targetSymbol = KSSMCODE[ combinedWordCode ];
-                        if(DEBUG) console.log(`%c[단계: 매핑 룩업2] 2바이트[${i}]: 0x${hexStr} -> 확장 변환 성공: '${targetSymbol}'`, "color: #ff9f43; font-weight: bold;");
-                        result += targetSymbol;
-                        i += 2;
-                        continue;
-					} else console.log(b1.toString(16),b2.toString(16));
+						const targetSymbol = KSSMCODE[ combinedWordCode ];
+						if(DEBUG) console.log(`%c[단계: 매핑 룩업2] 2바이트[${i}]: 0x${hexStr} -> 확장 변환 성공: '${targetSymbol}'`, "color: #ff9f43; font-weight: bold;");
+						result += targetSymbol;
+						i += 2;
+						continue;
+					//}  else console.log(b1.toString(16),b2.toString(16));
+					// 2. 조합형 한글 코드가 아님
+					}  else if (chosung >= 0 && jungsung >= 0 && jongsung >= 0) {
+					//if (chosung >= 0 && jungsung >= 0 && jongsung >= 0) {
+						let unicode = chosung * 588 + jungsung * 28 + jongsung + 44032;
+						const finalChar = String.fromCharCode(unicode);
+						
+						if(DEBUG) console.log(`[단계: 한글 조합] 2바이트[${i}]: 0x${hexStr} -> 초성Idx:${chosung}, 중성(원본:${origJungsung}->보정:${jungsung}), 종성(원본:${origJongsung}->보정:${jongsung}) -> 유니코드:${unicode} ('${finalChar}')`);
+						result += finalChar;
+					// 3. 한글 조합형 코드를 변환
+					} else {
+						// 4. convert.c의 SGtbl 예외 분기 검색
+						if (b1 === 0x84 || (combinedWordCode & 0xFC00) === 0x8400) {
+							const sgIndex = combinedWordCode & 0x00FF;
+							if (sgIndex >= 0x44 && sgIndex <= 0x7A) {
+								const lookupIdx = sgIndex - 0x44;
+								if (this.sgTable[lookupIdx]) {
+									const sgChar = this.sgTable[lookupIdx];
+									if(DEBUG) console.log(`%c[단계: SGtbl 자모] 2바이트[${i}]: 0x${hexStr} -> '${sgChar}'`, "color: #10ac84;");
+									result += sgChar;
+									i += 2;
+									continue;
+								}
+							}
+						//}
+						// 이마저 없으면 못 찾은 코드 콘솔에 남김
+						}  else console.log(b1.toString(16),b2.toString(16));
+						
+						// 5. 최후의 수단: EUC-KR 디코더 레이어 인터페이스 백업
+						const tempBytes = new Uint8Array([b1, b2]);
+						try {
+							const fallbackSymbol = new TextDecoder('euc-kr').decode(tempBytes);
+							if (fallbackSymbol && fallbackSymbol !== "") {
+								if(DEBUG) console.log(`%c[단계: 폴백 EUC-KR] 2바이트[${i}]: 0x${hexStr} -> 칩 해석: '${fallbackSymbol}'`, "color: #9c88ff;");
+								result += fallbackSymbol;
+							} else {
+								result += " ";
+							}
+						} catch (e) {
+							if(DEBUG) console.log(`%c[단계: 변환 실패] 2바이트[${i}]: 0x${hexStr} -> 공백 대체`, "color: #ff4757;");
+							result += " "; 
+						}
+					}
 
-                    // 2. 삼벌식 무결성 수식 기반 초/중/종성 해체 주행 (고정 유지 사양)
-                    let chosung = ((b1 >> 2) & 0x1F) - 2;
-                    let jungsung = ((b1 & 0x03) << 3) | ((b2 >> 5) & 0x07);
-                    let origJungsung = jungsung; 
-                    
-                    if (jungsung > 7 && jungsung < 16) {
-                        jungsung -= 5;
-                    } else if (jungsung > 15 && jungsung < 24) {
-                        jungsung -= 7;
-                    } else if (jungsung > 25) {
-                        jungsung -= 9;
-                    } else {
-                        jungsung -= 3;
-                    }
+					i += 2; // 정상 2바이트 주사 완료 후 이동
+				} else {
+					i++;
+				}
+			}
+		}
+		
+		if(DEBUG) console.log(`%c[JohabDecoder] 변환 완료: "${result}"`, "color: #00ffcc; font-weight: bold; border-top: 1px solid #00ffcc; padding-top: 2px;");
+		return result; // 공백 보존을 위해 trim() 미적용 유지
+	}
 
-                    let jongsung = (b2 & 0x1F) - 1;
-                    let origJongsung = jongsung; 
-                    if (jongsung > 16) {
-                        jongsung -= 1;
-                    }
-
-                    if (chosung >= 0 && jungsung >= 0 && jongsung >= 0) {
-                        let unicode = chosung * 588 + jungsung * 28 + jongsung + 44032;
-                        const finalChar = String.fromCharCode(unicode);
-                        
-                        if(DEBUG) console.log(`[단계: 한글 조합] 2바이트[${i}]: 0x${hexStr} -> 초성Idx:${chosung}, 중성(원본:${origJungsung}->보정:${jungsung}), 종성(원본:${origJongsung}->보정:${jongsung}) -> 유니코드:${unicode} ('${finalChar}')`);
-                        result += finalChar;
-                    } else {
-                        // 3. convert.c의 SGtbl 예외 분기 검색
-                        if (b1 === 0x84 || (combinedWordCode & 0xFC00) === 0x8400) {
-                            const sgIndex = combinedWordCode & 0x00FF;
-                            if (sgIndex >= 0x44 && sgIndex <= 0x7A) {
-                                const lookupIdx = sgIndex - 0x44;
-                                if (this.sgTable[lookupIdx]) {
-                                    const sgChar = this.sgTable[lookupIdx];
-                                    if(DEBUG) console.log(`%c[단계: SGtbl 자모] 2바이트[${i}]: 0x${hexStr} -> '${sgChar}'`, "color: #10ac84;");
-                                    result += sgChar;
-                                    i += 2;
-                                    continue;
-                                }
-                            }
-                        }
-                        
-                        // 4. 최후의 수단: EUC-KR 디코더 레이어 인터페이스 백업
-                        const tempBytes = new Uint8Array([b1, b2]);
-                        try {
-                            const fallbackSymbol = new TextDecoder('euc-kr').decode(tempBytes);
-                            if (fallbackSymbol && fallbackSymbol !== "") {
-                                if(DEBUG) console.log(`%c[단계: 폴백 EUC-KR] 2바이트[${i}]: 0x${hexStr} -> 칩 해석: '${fallbackSymbol}'`, "color: #9c88ff;");
-                                result += fallbackSymbol;
-                            } else {
-                                result += " ";
-                            }
-                        } catch (e) {
-                            if(DEBUG) console.log(`%c[단계: 변환 실패] 2바이트[${i}]: 0x${hexStr} -> 공백 대체`, "color: #ff4757;");
-                            result += " "; 
-                        }
-                    }
-
-                    i += 2;
-                } else {
-                    i++;
-                }
-            }
-        }
-        
-        if(DEBUG) console.log(`%c[JohabDecoder] 변환 완료: "${result}"`, "color: #00ffcc; font-weight: bold; border-top: 1px solid #00ffcc; padding-top: 2px;");
-        //return result.trim(); 
-		// 가사 앞에 공백이 있는 경우 위치 계산에 오류가 생기므로 trim() 하지 않는다.
-        return result;
-    }
 };
 
 
