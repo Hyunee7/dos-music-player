@@ -454,7 +454,7 @@ window.ChipTuneTitleParser = (function() {
 	  //console.log(`XM title [${title.trim()}]`);
       return {
         //title: new TextDecoder('utf-8').decode(u8.subarray(0,28))
-        title: title||(filename.substring(0, filename.lastIndexOf('.')) || filename)
+        title: title.trim()||(filename.substring(0, filename.lastIndexOf('.')) || filename)
       };
     },
 

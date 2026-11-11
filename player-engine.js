@@ -33,8 +33,7 @@ window.TrackerAudioEngine = (function () {
     let tickBeat = 24;
     let currentHardwareAbsoluteTick = 0;
 
-    // 지원 확장명
-    const ADPLUG_ONLY_EXTENSIONS = [
+    const ADPLUG_ONLY_EXTENSIONS = [ // adplug 지원 확장명
       '.ims', '.rol', '.vgm', '.vgz', '.cmf', '.dro', '.raw', '.laa',
       '.imf', '.a2m', '.adl', '.amd', '.bam', '.cff', '.d00', '.dfm',
       '.dmo', '.dtm', '.got', '.hsc', '.hsp', '.hsq', '.jbm', '.ksm',
@@ -44,7 +43,7 @@ window.TrackerAudioEngine = (function () {
       '.ha2', '.agd'
     ];
 
-    const LIBOPENMPT_EXTENSIONS = [ // 사용 않음.
+    const LIBOPENMPT_EXTENSIONS = [ // 트래커 지원 확장명.
       // Most common tracker formats
       '.mod', '.xm', '.it', '.s3m', '.mptm',
       // Other tracker formats
@@ -53,6 +52,11 @@ window.TrackerAudioEngine = (function () {
       '.mo3', '.umx', '.j2b', '.gdm', '.sfx', '.wow',
       // Note: .imf is NOT included (AdPlug handles it better for AdLib)
     ];
+	
+	const ADD_EXTENSIONS = [ // 추가 확장명
+		".a2t", ".bmf"
+	];
+
 
     /**
      * 모듈 초기화
@@ -141,9 +145,27 @@ window.TrackerAudioEngine = (function () {
     /**
      * 지원하는 모듈 선택
      */
-    function detectEngineType(filename) {
-        const ext = filename.toLowerCase().substring(filename.lastIndexOf("."));
-        return ADPLUG_ONLY_EXTENSIONS.includes(ext) ? "adplug" : "libopenmpt";
+    function detectEngineType(filename, musicArrayBuffer={}) {
+        let ext = filename.toLowerCase().substring(filename.lastIndexOf("."));
+        //return ADPLUG_ONLY_EXTENSIONS.includes(ext) ? "adplug" : "libopenmpt";
+
+		// imf 파일의 경우 두가지 포멧이 존재하므로
+		// adlib용 signature 정보를 확인한다.
+		if(ext=='.imf'){
+			const u8Array = new Uint8Array(musicArrayBuffer);
+			//let isAdlibIMF = true;
+			let ADLIB = [65, 68, 76, 73, 66];
+			for(var i=0; i<5; i++){
+				if(u8Array[i]!=ADLIB[i]){
+					//isAdlibIMF=false;
+					ext = '.mod'; // libopenmpt 확장명을 강제 세팅함. 
+					break;
+				}
+			} 
+		}
+
+		return ADPLUG_ONLY_EXTENSIONS.includes(ext) ? "adplug" :
+				LIBOPENMPT_EXTENSIONS.includes(ext) ? "libopenmpt" : ADD_EXTENSIONS.includes(ext) ? "adplug" : null
     }
 
 	/**
@@ -202,6 +224,8 @@ window.TrackerAudioEngine = (function () {
         get totalSamplesSent() { return totalSamplesSent; },
         get currentHardwareAbsoluteTick() { return currentHardwareAbsoluteTick; },
 
+        get detectEngineType() { return detectEngineType; }, // 확장명으로 연주엔진 선택
+
         setOnTrackEnd(callback) { onTrackEndCallback = callback; },
 
 		// 재생 중간지점 탐색
@@ -259,8 +283,9 @@ window.TrackerAudioEngine = (function () {
 
 		// 음악파일버퍼를 재생모듈에 적재
         async loadTrack(musicArrayBuffer, filename, bnkArrayBuffer = null) {
+//window.arrayBuffer = musicArrayBuffer; // 디버그용
             await initContext();
-            const type = detectEngineType(filename);
+            const type = detectEngineType(filename, musicArrayBuffer);
             await ensureEngineReady(type);
             this.unload();
 

@@ -19,8 +19,8 @@
   --color-yellow: #ffff54;
   --color-cyan: #54ffff;
   --color-gray: #7f7f7f;
-  --border-highlight: #ffffff;
-  --border-dark: #545454;
+  --border-highlight: #ffffff; /* 취소됨 */
+  --border-dark: #545454; /* 취소됨 */
   /*--toggle-active-bg: #00a8a8;*/
   --toggle-active-bg: #404141;
   --toggle-active-text: #ffffff;
@@ -606,6 +606,7 @@ body { /*2* /
   align-items: center;
   height: 100%;
   width: 100%;
+  max-width: 576px;
   text-align: center;
 }
 
@@ -667,6 +668,15 @@ hr {
     border:0;
 }
 
+.dos-panel-credits {
+    
+}
+
+.dos-message-error {
+    max-height: 90px;
+    overflow: auto;
+}
+
 /*
     모바일 모드 : 가로폭 768px 이하 적용
 */
@@ -678,11 +688,18 @@ hr {
         height: auto
     }
 
-    .dos-grid-2col {
+    .dos-grid-2col { /*  */
         grid-template-columns: 1fr;
         grid-template-rows: auto;
         gap: 0;
+        order: 2; /* 순서변경 */
     }
+    .dos-panel-credits { /* 가사창 */
+        order: 1; /* 순서변경 */ 
+    }
+	.dos-status-bar{
+		order: 3; 
+	}
 
     .dos-meter-label-left {
         width: 80px
@@ -731,3 +748,5 @@ hr {
     }
     /* */
 }
+
+/*  */

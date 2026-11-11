@@ -8,8 +8,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // .IMS, .ROL, .VGM, .MOD, .XM, .S3M .MID전 포맷 규격이 결합된 곡의 순정 보관함 목록
     let currentPlaylist = [
-        { filename: "BL-REF.IMS", url: "https://test.starbbs.kr/iss/dos/C_Drv/MUSIC/DATA/IMS1/BL-REF.IMS", format: "IMS", title: "BL-REF" },
-        { filename: "SIM-STAT.IMS", url: "https://test.starbbs.kr/iss/dos/C_Drv/MUSIC/DATA/BEST/SIM-STAT.IMS", format: "IMS", title: "SIM-STAT" },
+        { filename: "BL-REF.IMS", url: "https://imslist.starbbs.kr/dos/C_Drv/MUSIC/DATA/IMS1/BL-REF.IMS", format: "IMS", title: "BL-REF" },
+        { filename: "SIM-STAT.IMS", url: "https://imslist.starbbs.kr/dos/C_Drv/MUSIC/DATA/BEST/SIM-STAT.IMS", format: "IMS", title: "SIM-STAT" },
         { filename: "COM-COOL.IMS", url: "./folder/COM-COOL.IMS", format: "IMS", title: "COM-COOL" },
         { filename: "COM-CHIC.IMS", url: "./folder/COM-CHIC.IMS", format: "IMS", title: "COM-CHIC" },
         { filename: "COM-PAGI.IMS", url: "./folder/COM-PAGI.IMS", format: "IMS", title: "COM-PAGI" },
@@ -49,6 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let stateUpdateInterval = null;
     let currentIssData = null;
     const ITEM_HEIGHT = 28;
+	const musicExt = /\.(mod|xm|s3m|it|ims|rol|vgm|mid|sop|msc|m|dro|dtm|dmo|sa2|xad|raw|laa|sng|amd|d00|vgz|imf|669|gdm|med)$/i;
 
     // DOM 제어 노드 객체 캐싱
     const trackListContainer = document.getElementById("musicTrackList");
@@ -203,7 +204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             div.addEventListener("dragleave", () => {
                 div.classList.remove("dos-drag-over");
             });
-            div.addEventListener("drop", (e) => {
+            div.addEventListener("drop", (e) => { // 곡목록 순서변경
                 e.preventDefault();
                 const fromIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
                 const toIndex = idx;
@@ -221,7 +222,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             div.addEventListener(
                 "touchmove",
                 (e) => {
-                    const touch = e.touches;
+                    //const touch = e.touches;
+					let touch = e.touches;
+					if(!touch.clientX) touch = e.touches[0] || e.changedTouches[0];
                     const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
                     const listItem = targetElement ? targetElement.closest(".dos-list-item") : null;
                     document
@@ -231,8 +234,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 },
                 { passive: true }
             );
-            div.addEventListener("touchend", (e) => {
-                const touch = e.changedTouches;
+            div.addEventListener("touchend", (e) => { // 곡목록 순서변경
+                //const touch = e.changedTouches;
+                let touch = e.changedTouches;
+				if(!touch.clientX) touch = e.touches[0] || e.changedTouches[0];
                 const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
                 const listItem = targetElement ? targetElement.closest(".dos-list-item") : null;
                 div.classList.remove("dos-dragging");
@@ -653,7 +658,7 @@ window['playlist']=currentPlaylist; // 개발용
 
         const audioEngine = window.TrackerAudioEngine;
         if (!audioEngine) {
-            setTimeout(loadAndPlayTrack, 300);
+            setTimeout(loadAndPlayTrack, 300); // 엔진이 기동되기 전인경우 재기동시도
             return;
         }
 		
@@ -676,8 +681,10 @@ window['playlist']=currentPlaylist; // 개발용
                 musicArrayBuffer = await response.arrayBuffer();
             }
 
+			// 뱅크파일 추출
             const ext = track.filename.toLowerCase().substring(track.filename.lastIndexOf("."));
-            if ([".ims", ".rol", ".sop"].includes(ext)) {
+//            if ([".ims", ".rol", ".sop"].includes(ext)) {
+            if ([".ims", ".rol"].includes(ext)) { // .sop 파일은 악기 포함임.
                 try {
 					/*
                     const lastDotIdx = track.filename.lastIndexOf(".");
@@ -705,6 +712,7 @@ window['playlist']=currentPlaylist; // 개발용
                         );
                         const localBnkFile = window.uploadedBnkMap.get(targetBnkName.toLowerCase());
                         bnkArrayBuffer = await localBnkFile.arrayBuffer();
+						track.bnkName = targetBnkName; // 뱅크파일 출력용
                     } else if (window.uploadedBnkMap && window.uploadedBnkMap.has("standard.bnk")) {
                         console.log(`%c[공유 뱅크] %c로컬 STANDARD.BNK 매핑 완료`, "color: #54ffff; font-weight:bold;");
                         const localStdBnk = window.uploadedBnkMap.get("standard.bnk");
@@ -742,6 +750,8 @@ window['playlist']=currentPlaylist; // 개발용
                 }
 
                 if (track.issFileObject) {
+//console.log('track.issFileObject',track.issFileObject);
+					track.issName = track.issFileObject.name; // 가사 파일명
                     const issBuf = await track.issFileObject.arrayBuffer();
                     if (window.ChipTuneTitleParser) currentIssData = window.ChipTuneTitleParser.parseISSFile(issBuf);
                 } else if (!track.fileObject) {
@@ -759,6 +769,8 @@ window['playlist']=currentPlaylist; // 개발용
                         }
                     } catch (e) {}
                 }
+            } else {
+				
             }
 
             // 오디오 워크렛 스레드의 다음 트랙 연주 종료 확인 핸들러를 순정 규격 그대로 유지하여 시동 잠금 해제!
@@ -789,11 +801,13 @@ window['playlist']=currentPlaylist; // 개발용
 
             // 기존 오디오 엔진 인스턴스의 런타임 하이재킹 방식 함수 오염을 완전히 지우고, 엔진 고유의 순정 적재 체인을 독립 기동시킵니다.
             await audioEngine.loadTrack(musicArrayBuffer, track.filename, bnkArrayBuffer);
-            audioEngine.play();
+            audioEngine.play();  // 재생시작
+			// 버튼 상태 변경
             btnPlay.innerHTML = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>`;
             btnStop.removeAttribute("disabled");
             btnPrev.removeAttribute("disabled");
             btnNext.removeAttribute("disabled");
+			
 			/* 가수 정보는 오류가 많음.
             statusBarText.innerText =
                 currentIssData && currentIssData.singer
@@ -811,6 +825,7 @@ window['playlist']=currentPlaylist; // 개발용
             }
 			*/
 
+			if(window.innerWidth<768) document.querySelector('.dos-panel-credits').classList.remove('hidden'); // 가사창 노출
 window.song = track; // 디버그용
 		    //const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
 //console.log('ext',ext)
@@ -874,13 +889,20 @@ window.song = track; // 디버그용
 				  <div><span class="format-ext">Speed</span> ${header.speed}</div>
 				</div>
 				`;
-			}else lyricsDisplay.innerHTML = `가사 음슴`;
+			}else{
+				lyricsDisplay.innerHTML = `가사 음슴`;
+				if(!currentIssData && window.innerWidth<768) document.querySelector('.dos-panel-credits').classList.add('hidden');
+				//document.querySelector('.dos-panel-credits').classList.remove('hidden');
+			}
 
 			
             runStateSyncLoop(); // 상태 체크 루프 시작
             renderPlaylist(); // 플레이리스트 그림
         } catch (err) {
             console.error(err);
+			
+			errorMessage.classList.remove('hidden');
+			errorMessage.innerHTML += `<div>> ${err}</div>`;
             statusBarText.innerText = `적재 실패: ${track.title}`;
         } finally {
             if (overlay) overlay.classList.add("hidden");
@@ -1032,7 +1054,7 @@ window.song = track; // 디버그용
             }
         }
 */
-//console.log('allFiles',allFiles);
+//console.log('allFiles1',allFiles);
         // 파일 처리
         // 2순위: 단순 파일 뭉치 드롭 가용 시 (바탕화면 개별 파일 다중 셀렉트 대응 리턴 바이패스)
         if (allFiles.length === 0 && filesList && filesList.length > 0) {
@@ -1049,8 +1071,11 @@ window.song = track; // 디버그용
 	 */
 	async function handleFile(allFiles) {
         if (allFiles.length > 0) {
-//console.log(allFiles);
-            const allowedFiles = allFiles.filter((f) => /\.(mod|xm|s3m|it|ims|rol|vgm|mid|sop|msc|m|dro|dtm|dmo|sa2|xad|raw|laa|sng|amd|d00|vgz)$/i.test(f.name));
+//console.log('allFiles2',allFiles);
+			// 파일 필터링
+			//const allowedFiles = allFiles.filter((f) => musicExt.test(f.name));
+			// 확장명 체크 방식 변경
+            const allowedFiles = allFiles.filter((f) => window.TrackerAudioEngine.detectEngineType(f.name));
             const issFiles = allFiles.filter((f) => /\.iss$/i.test(f.name));
 			//console.log('issFiles',issFiles);
             const issMap = new Map(issFiles.map((f) => [f.name.toLowerCase().replace(/\.iss$/, ""), f]));
@@ -1059,7 +1084,8 @@ window.song = track; // 디버그용
 			//console.log('bnkFiles',bnkFiles);
             window.uploadedBnkMap = new Map(bnkFiles.map((f) => [f.name.toLowerCase(), f]));
 
-            if (allowedFiles.length > 0) {
+			// 플레이리스트 생성
+            if (allowedFiles.length > 0) { // 필터를 거친 목록이 남았을때
                 const scannedTracks = [];
                 for (const file of allowedFiles) {
                     const ext = file.name.split(".").pop().toUpperCase();
@@ -1099,6 +1125,7 @@ window.song = track; // 디버그용
                         format: ext,
                         title: parsedTitle,
                         fileObject: file,
+//						issName : baseName,
                         issFileObject: matchedIssFile || null,
                         basicTempo: bTempo,
                         tickBeat: tBeat,
@@ -1120,6 +1147,9 @@ window.song = track; // 디버그용
         }
 	}
 
+	/**
+	 * 곡목록 순서변경 처리
+	 */
     function handlePlaylistReorder(fromIndex, toIndex) {
         const movedItem = currentPlaylist[fromIndex];
         currentPlaylist.splice(fromIndex, 1);
@@ -1138,13 +1168,17 @@ window.song = track; // 디버그용
 	 * 상태바에 곡정보 출력내용 조립
 	 */
 	function getTrack(track){
-		var r = track.title;
+		var title = track.title;
+        const ext = track.filename.toLowerCase().substring(track.filename.lastIndexOf("."));
+		const EXT = ['.ims', '.rol', '.sop'];
+		if(!EXT.includes(ext)) return title;
+		
 		var i = (track.issName||'')?`, ${track.issName}`:'';
 		var s = ` (${track.filename}${i})`
 		if(track.bnkName !== undefined){
 			if(track.bnkName) s=` (${track.filename}${i}, ${track.bnkName})`;
 		}
-		return r+s;
+		return title+s;
 	}
 
     btnPlay.addEventListener("click", () => { // 재생/일시정지
@@ -1247,6 +1281,7 @@ window.song = track; // 디버그용
         formatDialog.classList.add("hidden");
         formatDialogBackdrop.classList.add("hidden");
     };
+	
     closeDialogBtn.addEventListener("click", closeDialog); // 지원포멧 닫기
     formatDialogBackdrop.addEventListener("click", closeDialog);
     window.addEventListener("resize", () => {
@@ -1255,7 +1290,7 @@ window.song = track; // 디버그용
     });
 
 	/**
-	 * 반복 설정
+	 * 플레이리스트 반복 설정
 	 */
     function setRepeatMode(mode, targetBtn) { 
       repeatMode = mode; [repeatAll, repeatOne, repeatShuffle].forEach(b => b.classList.remove("dos-button-active"));
@@ -1304,6 +1339,32 @@ window.song = track; // 디버그용
         renderPlaylist(); // 플레이리스트 그림
         progressFill.style.width = `0%`;
     }
+	
+	/*/ console.log 가로채기 (실험용)
+	errorMessage.classList.remove('hidden');
+    (function () {
+      // 1. 기존 console.log 백업
+      const originalLog = console.log;
+      const logDiv = document.getElementById('errorMessage');
+
+      // 2. console.log 재정의
+      console.log = function (...args) {
+        // 기존 브라우저 콘솔에도 출력
+        originalLog.apply(console, args);
+
+        // div에 출력할 문자열 포맷팅
+        const message = args.map(arg => {
+          return typeof arg === 'object' ? JSON.stringify(arg) : arg;
+        }).join(' ');
+
+        // div 요소에 내용 추가
+        if (logDiv) {
+          logDiv.innerHTML += `<div>> ${message}</div>`;
+          logDiv.scrollTop = logDiv.scrollHeight; // 자동 스크롤
+        }
+      };
+    })();	
+	// console.log 가로채기 */
 	
 	// 초기화
     renderPlaylist(); // 플레이리스트 그리기
