@@ -49,7 +49,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     let stateUpdateInterval = null;
     let currentIssData = null;
     const ITEM_HEIGHT = 28;
-	const musicExt = /\.(mod|xm|s3m|it|ims|rol|vgm|mid|sop|msc|m|dro|dtm|dmo|sa2|xad|raw|laa|sng|amd|d00|vgz|imf|669|gdm|med)$/i;
+	
+	const musicExt = /\.(mod|xm|s3m|it|ims|rol|vgm|mid|sop|msc|m|dro|dtm|dmo|sa2|xad|raw|laa|sng|amd|d00|vgz|imf|669|gdm|med)$/i; // 사용하지 않음
+	const seekExt = /\.(mod|xm|s3m|it|vgm|mid)$/i; // 재생바 이동 허용 확장명
+	
+	const imgPause = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>`;
+	const imgPausePlay = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><rect x="1" y="4" width="4" height="16" rx="1"></rect><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`;
+	const imgPlay = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`;
 
     // DOM 제어 노드 객체 캐싱
     const trackListContainer = document.getElementById("musicTrackList");
@@ -649,7 +655,7 @@ window['playlist']=currentPlaylist; // 개발용
     }
 
     /**
-     * player.js - Part 4-B: 트랙 릴레이 적재 및 트랙 탐색기
+     * 트랙 릴레이 적재 및 트랙 탐색기
      */
     async function loadAndPlayTrack() {
         const track = currentPlaylist[playingIndex];
@@ -779,19 +785,19 @@ window['playlist']=currentPlaylist; // 개발용
                     "%c[오토 주크박스] 현재 트랙 연주 종료 확인 -> 다음 트랙 바통 인계 작동",
                     "color: #54ff54; font-weight: bold;"
                 );
-                if (repeatMode === "one") {
+                if (repeatMode === "one") { // 한곡 반복
                     loadAndPlayTrack();
-                } else if (repeatMode === "shuffle") {
+                } else if (repeatMode === "shuffle") { // 무작위 
                     const rand = Math.floor(Math.random() * currentPlaylist.length);
                     playingIndex = rand;
                     selectedIndex = rand;
                     loadAndPlayTrack();
-                } else {
+                } else { // 다음 곡으로
                     if (playingIndex < currentPlaylist.length - 1) {
                         playingIndex++;
                         selectedIndex = playingIndex;
                         loadAndPlayTrack();
-                    } else {
+                    } else { // 플레이리스트 마지막이 지나면 첫번째로 
                         playingIndex = 0;
                         selectedIndex = 0;
                         loadAndPlayTrack();
@@ -799,15 +805,21 @@ window['playlist']=currentPlaylist; // 개발용
                 }
             });
 
-            // 기존 오디오 엔진 인스턴스의 런타임 하이재킹 방식 함수 오염을 완전히 지우고, 엔진 고유의 순정 적재 체인을 독립 기동시킵니다.
+            // 음악파일을 모듈에 적재.
             await audioEngine.loadTrack(musicArrayBuffer, track.filename, bnkArrayBuffer);
             audioEngine.play();  // 재생시작
 			// 버튼 상태 변경
-            btnPlay.innerHTML = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>`;
+            btnPlay.innerHTML = imgPause;
             btnStop.removeAttribute("disabled");
             btnPrev.removeAttribute("disabled");
             btnNext.removeAttribute("disabled");
-			
+
+/*
+// it,mtm,s3m 등 재생시간 구하기
+const exactDuration = getExactDuration(audioEngine.loadedModulePtr, audioEngine.SAMPLE_RATE);
+console.log("정확한 전체 시간(초):", exactDuration);
+*/
+
 			/* 가수 정보는 오류가 많음.
             statusBarText.innerText =
                 currentIssData && currentIssData.singer
@@ -915,8 +927,8 @@ window.song = track; // 디버그용
     if (targetRail) {
         targetRail.addEventListener("click", (e) => {
             const track = currentPlaylist[playingIndex];
-			//console.log(track, /\.(mod|xm|s3m|it|vgm|mid)$/i.test(track.filename))
-			if(/\.(mod|xm|s3m|it|vgm|mid)$/i.test(track.filename)){
+//console.log(track, /\.(mod|xm|s3m|it|vgm|mid)$/i.test(track.filename))
+			if(seekExt.test(track.filename)){
 				if(/\.(vgm|mid)$/i.test(track.filename)){
 					return; // 걍 탐색 안하겠음.
 					if(!confirm(`${track.format} 파일은 탐색에 시간이 오래 소요됩니다. 계속하시겠습니까?`)) return;
@@ -936,8 +948,7 @@ window.song = track; // 디버그용
     }
 
     /**
-     * player.js - Part 4-C: 폴더 재귀 스캔 및 개별 다중 파일 드롭 로드가 동시 완치된 최종 마감부
-     * 드롭존에 개별 파일 다중 셀렉트 투하 시에도 한 치의 누락 없이 로컬 데이터베이스 스왑을 이뤄냅니다.
+     * 재생 바 탐색 - 바로 위 블럭과 중복
      */
     if (typeof targetRail !== "undefined" || window.progressBarContainer) {
         const finalRail =
@@ -945,7 +956,8 @@ window.song = track; // 디버그용
             document.getElementById("progressBarContainer");
         if (finalRail) {
             finalRail.addEventListener("click", (e) => {
-				return; //로직이 반복됨 / 780라인
+				return; //로직이 반복됨 - 바로위 블럭
+				
                 const audioEngine = window.TrackerAudioEngine;
                 if (!audioEngine) return;
                 const playbackState = audioEngine.getPlaybackState();
@@ -1077,11 +1089,11 @@ window.song = track; // 디버그용
 			// 확장명 체크 방식 변경
             const allowedFiles = allFiles.filter((f) => window.TrackerAudioEngine.detectEngineType(f.name));
             const issFiles = allFiles.filter((f) => /\.iss$/i.test(f.name));
-			//console.log('issFiles',issFiles);
+//console.log('issFiles',issFiles);
             const issMap = new Map(issFiles.map((f) => [f.name.toLowerCase().replace(/\.iss$/, ""), f]));
 
             const bnkFiles = allFiles.filter((f) => /\.bnk$/i.test(f.name));
-			//console.log('bnkFiles',bnkFiles);
+//console.log('bnkFiles',bnkFiles);
             window.uploadedBnkMap = new Map(bnkFiles.map((f) => [f.name.toLowerCase(), f]));
 
 			// 플레이리스트 생성
@@ -1098,7 +1110,7 @@ window.song = track; // 디버그용
 					let fileInfo = {};
                     try {
                         const buf = await file.arrayBuffer();
-						//console.log(file.name)
+//console.log(file.name)
                         if (window.ChipTuneTitleParser) {
 							/*
                             parsedTitle = window.ChipTuneTitleParser.extractTitle(buf, file.name);
@@ -1114,7 +1126,7 @@ window.song = track; // 디버그용
                                 tBeat = fileInfo.tickBeat;
                             }
 							parsedTitle = fileInfo.title || (file.name.substring(0, file.name.lastIndexOf('.')) || file.name);
-							//console.log('parsedTitle',parsedTitle)
+//console.log('parsedTitle',parsedTitle)
                         }
                     } catch (err) {
                         console.warn(err);
@@ -1190,7 +1202,7 @@ window.song = track; // 디버그용
                 audioEngine.queueWriter.node.port.postMessage({ type: "stop" });
             }
             audioEngine.pause();
-            btnPlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><rect x="1" y="4" width="4" height="16" rx="1"></rect><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`;
+            btnPlay.innerHTML = imgPausePlay;
 	        const track = currentPlaylist[playingIndex];
 			statusBarText.innerText = `일시정지 - ${getTrack(track)}`;
 	        clearInterval(stateUpdateInterval); // 상태 체크 루프 중지
@@ -1201,7 +1213,7 @@ window.song = track; // 디버그용
                 }
 				console.log('일시정지 후 재생');
                 audioEngine.play();
-                btnPlay.innerHTML = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>`;
+                btnPlay.innerHTML = imgPause;
                 if (typeof window.triggerBufferWriteFeedGlobal === "function") {
                     window.triggerBufferWriteFeedGlobal();
                 }
@@ -1224,7 +1236,7 @@ window.song = track; // 디버그용
                 window.TrackerAudioEngine.queueWriter.node.port.postMessage({ type: "hard_reset" });
             }
         }
-        btnPlay.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`;
+        btnPlay.innerHTML = imgPlay;
         progressFill.style.width = `0%`;
         progressText.innerText = `--:-- / --:--`;
         if (typeof lucide !== "undefined") lucide.createIcons();
@@ -1297,12 +1309,15 @@ window.song = track; // 디버그용
       targetBtn.classList.add("dos-button-active");
       if (window.TrackerAudioEngine) window.TrackerAudioEngine.setLoopEnabled(mode === 'one');
     }
-    repeatAll.addEventListener("click", () => setRepeatMode("all", repeatAll)); // 전체 반복 (Default)
-    repeatOne.addEventListener("click", () => setRepeatMode("one", repeatOne)); // 한곡 반복
-    repeatShuffle.addEventListener("click", () => setRepeatMode("shuffle", repeatShuffle)); // 랜덤 재생
+	// 전체 반복 (Default)
+    repeatAll.addEventListener("click", () => setRepeatMode("all", repeatAll)); 
+	// 한곡 반복
+    repeatOne.addEventListener("click", () => setRepeatMode("one", repeatOne)); 
+	// 랜덤 재생
+    repeatShuffle.addEventListener("click", () => setRepeatMode("shuffle", repeatShuffle)); 
 
 	/**
-	 * 시각정보의 출력형식 변환
+	 * 재생 시각 정보의 출력형식 변환
 	 */
     function formatTime(ms) {
         const totalSeconds = Math.floor(ms / 1000);
@@ -1325,7 +1340,7 @@ window.song = track; // 디버그용
                     const buf = await res.arrayBuffer();
                     //track.title = window.ChipTuneTitleParser.extractTitle(buf, track.filename);
                     track.header = window.ChipTuneTitleParser.extractHeader(buf, track.filename);
-//					console.log('track.header',track.filename,track.header)
+//console.log('track.header',track.filename,track.header)
 					track.title = track.header.title ;
                     const imsInfo = window.ChipTuneTitleParser.parseImsHeader(buf);
                     if (imsInfo) {
@@ -1336,9 +1351,100 @@ window.song = track; // 디버그용
             } catch (e) {}
         }
         statusBarText.innerText = "대기";
-        renderPlaylist(); // 플레이리스트 그림
+        renderPlaylist(); // 플레이리스트 출력
         progressFill.style.width = `0%`;
     }
+
+    // =================================================================
+    // [변경 및 추가 영역] 파일 드롭다운 영역 전체화면 드라이버 통합
+    // =================================================================
+    
+    // 브라우저 윈도우 전체 영역에 드래그 진입 시 오버레이 활성화
+    window.addEventListener("dragenter", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("drag-active");
+    });
+
+    // 전체 화면 드롭존 영역 위에서 이동할 때 처리
+    dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        // 기존 배경색 변경 로직 대신 클래스로 제어
+        dropZone.classList.add("drag-active"); 
+    });
+
+    // 마우스가 브라우저 밖으로 나가거나 드래그가 취소될 때 오버레이 숨김
+    dropZone.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        // dropZone 내부 자식 요소들 간의 이동으로 인해 해제되는 현상 방지
+        if (e.relatedTarget === null || !dropZone.contains(e.relatedTarget)) {
+            dropZone.classList.remove("drag-active");
+        }
+    });
+
+    // 파일이 최종 드롭 되었을 때 처리
+    dropZone.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("drag-active"); // 전체 화면 해제
+
+        // 🎯 [다중 개별 파일 및 폴더 동시 탐색 하이브리드 드라이버 가동]
+        const items = e.dataTransfer.items;
+        const filesList = e.dataTransfer.files;
+
+        if ((!items || items.length === 0) && (!filesList || filesList.length === 0)) {
+            statusBarText.innerText = "드롭 데이터 유효 안함";
+            return;
+        }
+
+        statusBarText.innerText = "디렉토리 및 개별 자원 구조 정밀 스캔 중...";
+        const allFiles = [];
+
+        // 폴더 내부를 하위 노드까지 파고드는 비동기 재귀 엔진
+        async function traverseFileTree(item, depth = 0) {
+            if (item.isFile) {
+                return new Promise((resolve) => {
+                    item.file((file) => {
+                        allFiles.push(file);
+                        resolve();
+                    });
+                });
+            } else if (item.isDirectory) {
+                const dirReader = item.createReader();
+                const readEntriesBatch = () => {
+                    return new Promise((resolveBatch) => {
+                        dirReader.readEntries(async (entries) => {
+                            if (entries.length === 0) {
+                                resolveBatch();
+                                return;
+                            }
+                            for (const entry of entries) await traverseFileTree(entry, depth + 1);
+                            await readEntriesBatch();
+                            resolveBatch();
+                        });
+                    });
+                };
+                await readEntriesBatch();
+            }
+        }
+
+        // 디렉토리 처리
+        for (let i = 0; i < items.length; i++) {
+            const entry = items[i].webkitGetAsEntry();
+            if (entry && !entry.isFile) { 
+                await traverseFileTree(entry);
+            }
+        }
+
+        // 파일 처리
+        if (allFiles.length === 0 && filesList && filesList.length > 0) {
+            for (let i = 0; i < filesList.length; i++) {
+                allFiles.push(filesList[i]);
+            }
+        }
+        await handleFile(allFiles);
+    });
+    // =================================================================
+
+	
 	
 	/*/ console.log 가로채기 (실험용)
 	errorMessage.classList.remove('hidden');

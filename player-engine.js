@@ -1,5 +1,5 @@
 /**
- * player-engine.js - Part 1: 음악파일을 재생 모듈에 적재 하거나 해제하는 엔진
+ * player-engine.js 음악파일을 재생 모듈에 적재 하거나 해제하는 엔진
  */
 
 window.TrackerAudioEngine = (function () {
@@ -50,10 +50,9 @@ window.TrackerAudioEngine = (function () {
       '.stm', '.mtm', '.far', '.669', '.okt', '.ult', '.med',
       '.ptm', '.mdl', '.dmf', '.dsm', '.amf', '.ams', '.dbm',
       '.mo3', '.umx', '.j2b', '.gdm', '.sfx', '.wow',
-      // Note: .imf is NOT included (AdPlug handles it better for AdLib)
     ];
 	
-	const ADD_EXTENSIONS = [ // 추가 확장명
+	const ADD_EXTENSIONS = [ // 추가 확장명 adplug 용
 		".a2t", ".bmf"
 	];
 
@@ -139,7 +138,7 @@ window.TrackerAudioEngine = (function () {
             } catch (err) {
                 console.error("AudioWorklet 컴파일 에러:", err);
             }
-        }
+        } // if (!outputQueueNode) {
     }
 
     /**
@@ -205,8 +204,86 @@ window.TrackerAudioEngine = (function () {
         }
     }
 
+	// it,mtm,s3m 등 재생시간 구하기 - 걍 고쳐짐??? 그래서 방치함.
+	// libopenmpt.js it,mtm,s3m 등 _openmpt_module_get_duration_seconds() 가 안될때 전체시간 구하는 방법 샘플 파라미터 정보
+	// Sample 1
+	// 사용 예시
+	//	const exactDuration = getExactDuration(modPtr, 44100);
+	//	console.log("정확한 전체 시간(초):", exactDuration);
+	//const exactDuration = getExactDuration(audioEngine.loadedModulePtr, audioEngine.SAMPLE_RATE);
+	function getExactDuration(modPtr, sampleRate) {
+        const audioEngine = window.TrackerAudioEngine;
+        if (!audioEngine) {
+			console.log('모듈 적재 실패!');
+		}
+		const openmptModuleInstance = audioEngine.openmptModuleInstance;
+		
+		// 임시로 데이터를 받아낼 버퍼 생성 (렌더링 속도를 위해 4096개 정도 크기 지정)
+		const bufferSize = 4096;
+		const leftBuffer = openmptModuleInstance._malloc(bufferSize * 4);
+		const rightBuffer = openmptModuleInstance._malloc(bufferSize * 4);
+		
+		let totalSamplesRendered = 0;
+		let readSamples = 0;
+
+		// 곡이 끝날 때까지(리턴 값이 0이 될 때까지) 초고속으로 읽기
+		while ((readSamples = openmptModuleInstance._openmpt_module_read_float_stereo(modPtr, sampleRate, bufferSize, leftBuffer, rightBuffer)) > 0) {
+			totalSamplesRendered += readSamples;
+			
+			// 무한 루프 방지 안전장치 (예: 30분 분량 이상 처리되면 중단)
+			if (totalSamplesRendered > sampleRate * 1800) { 
+				break;
+			}
+		}
+
+		// 메모리 해제
+		openmptModuleInstance._free(leftBuffer);
+		openmptModuleInstance._free(rightBuffer);
+
+		// 사용 후 모듈 위치를 다시 처음(0초)으로 되돌려놓아야 정상 재생이 가능합니다.
+		openmptModuleInstance._openmpt_module_set_position_seconds(modPtr, 0.0);
+
+		// 총 샘플 수를 샘플 레이트(Hz)로 나누어 정확한 전체 초(seconds)를 구합니다.
+		return totalSamplesRendered / sampleRate;
+	}
+	// Sample 2
+	/*
+	// 1. 현재 진행 상태(위치)를 백업합니다.
+	var c_order = _openmpt_module_get_current_order(mod_ptr);
+	var c_row = _openmpt_module_get_current_row(mod_ptr);
+
+	// 2. 곡의 맨 처음으로 이동합니다.
+	_openmpt_module_set_position_seconds(mod_ptr, 0);
+
+	// 3. 아주 작은 단위(예: 1초 또는 10초)로 끝까지 점프하며 누적 시간을 구합니다.
+	var total_seconds = 0;
+	var step = 10.0; // 10초씩 건너뛰기
+
+	while (true) {
+		var current_pos = _openmpt_module_get_position_seconds(mod_ptr);
+		
+		// 다음 위치로 강제 이동 시도
+		_openmpt_module_set_position_seconds(mod_ptr, current_pos + step);
+		
+		// 이동 후의 위치를 다시 확인
+		var next_pos = _openmpt_module_get_position_seconds(mod_ptr);
+		
+		// 더 이상 시간이 늘어나지 않는다면 곡의 끝에 도달한 것입니다.
+		if (next_pos <= current_pos) {
+			total_seconds = current_pos;
+			break;
+		}
+	}
+
+	// 4. 측정이 끝난 후 원래 재생 중이던 위치로 복구합니다.
+	_openmpt_module_set_position_order_row(mod_ptr, c_order, c_row);
+
+	console.log("정확한 전체 시간(초):", total_seconds);
+	*/
+
+
     /**
-     * player-engine.js - Part 2: WASM 에뮬레이터 코어 레지스터 음표 가로채기(Note Intercept) 직결 엔진
+     * WASM 에뮬레이터 코어 레지스터 음표 가로채기(Note Intercept) 직결 엔진
      * 유령 API와 Analyser 편법을 완전히 걷어내고, 실제 악보의 미디 신호를 실시간 방출합니다.
      */
     return {
@@ -279,9 +356,9 @@ window.TrackerAudioEngine = (function () {
                 window.triggerBufferWriteFeedGlobal();
                 window.triggerBufferWriteFeedGlobal();
             }
-        },
+        }, // seekTo(targetTimeMs) {
 
-		// 음악파일버퍼를 재생모듈에 적재
+		// 음악파일 버퍼를 재생모듈에 적재
         async loadTrack(musicArrayBuffer, filename, bnkArrayBuffer = null) {
 //window.arrayBuffer = musicArrayBuffer; // 디버그용
             await initContext();
@@ -373,7 +450,7 @@ window.u8Array = u8Array; // 디버그용
                     }
                 }
                 currentRuntimeTempo = bTempo;
-				//console.log('currentRuntimeTempo1',currentRuntimeTempo)
+//console.log('currentRuntimeTempo1',currentRuntimeTempo)
                 tickBeat = tBeat;
                 totalSamplesSent = 0;
             }
@@ -392,7 +469,8 @@ window.u8Array = u8Array; // 디버그용
                 outputQueueNode.port.postMessage({ type: "stop" });
                 outputQueueNode.port.postMessage({ type: "start" });
             }
-        },
+        }, // async loadTrack(musicArrayBuffer, filename, bnkArrayBuffer = null) {
+
 		// 재생
         play() {
             if (loadedModulePtr) {
@@ -443,6 +521,7 @@ window.u8Array = u8Array; // 디버그용
             if (currentEngineType === "adplug" && adplugModuleInstance)
                 adplugModuleInstance._emu_set_loop_enabled(enabled ? 1 : 0);
         },
+		// 
         getAnalyserNode() {
             return analyserNode;
         },
