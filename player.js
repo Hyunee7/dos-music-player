@@ -56,6 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	const imgPause = `<svg xmlns="http://w3.org" viewBox="0 0 24 24" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>`;
 	const imgPausePlay = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><rect x="1" y="4" width="4" height="16" rx="1"></rect><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`;
 	const imgPlay = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play" aria-hidden="true" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke: currentColor;"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path></svg>`;
+	const imgPlaying = '<span style="flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume2 lucide-volume-2" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"></path><path d="M16 9a5 5 0 0 1 0 6"></path><path d="M19.364 18.364a9 9 0 0 0 0-12.728"></path></svg></span>';
 
     // DOM 제어 노드 객체 캐싱
     const trackListContainer = document.getElementById("musicTrackList");
@@ -70,6 +71,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sliderLabel = document.getElementById("sliderLabel");
     const lyricsDisplay = document.getElementById("lyricsDisplay");
     const dropZone = document.getElementById("dropZone");
+    const dropZoneFull = document.getElementById("dropZoneFull");
     const folderLabel = document.getElementById("folderLabel");
 
     const repeatAll = document.getElementById("repeatAll");
@@ -80,6 +82,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const formatDialog = document.getElementById("formatDialog");
     const formatDialogBackdrop = document.getElementById("formatDialogBackdrop");
     const btnMute = document.getElementById("btnMute");
+
+    // 가사 전체보기 관련 DOM 캐싱
+    const lyricsFullDialog = document.getElementById("lyricsFullDialog");
+    const lyricsFullDialogBackdrop = document.getElementById("lyricsFullDialogBackdrop");
+    const lyricsFullContent = document.getElementById("lyricsFullContent");
+    const closeLyricsDialogBtn = document.getElementById("closeLyricsDialogBtn");
+
     let isMuted = false;
     let lastVolume = 70;
 
@@ -173,7 +182,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 window.TrackerAudioEngine.getPlaybackState()?.isPlaying
             ) {
                 div.classList.add("dos-list-item-playing");
-				playingIcon = '<span style="flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume2 lucide-volume-2" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"></path><path d="M16 9a5 5 0 0 1 0 6"></path><path d="M19.364 18.364a9 9 0 0 0 0-12.728"></path></svg></span>';
+				playingIcon = imgPlaying; // 재생중 이미지 svg
             }
 
             div.style.height = `${ITEM_HEIGHT}px`;
@@ -560,11 +569,18 @@ window['playlist']=currentPlaylist; // 개발용
             progressText.innerText = `${formatTime(currentMs)} / ${formatTime(totalMs)}`; // 재생시각/전체시각
 
 			// 현재 bpm 표시
+            // 엔진에서 현재 가변 런타임 BPM을 실시간으로 가져옴 (없으면 트랙 기본값, 최후 수단은 120)
             const liveBpm =
                 audioEngine && audioEngine.currentRuntimeTempo ? Math.round(audioEngine.currentRuntimeTempo) : 120;
             const tempoElement = document.getElementById("tempoDisplayValue");
             if (tempoElement) tempoElement.innerText = String(liveBpm).padStart(3, "0");
 
+ 	        const track = currentPlaylist[playingIndex];
+
+           // SOP 전용 틱비트 스케일링 가중치 설정 (SOP는 대개 내부 해상도가 다름)
+            const liveTickBeat = track.tickBeat || 24;
+
+            // 1. 기본 하드웨어 및 오디오 엔진 상태값 확보
             let rawHardwareTick = 0;
             const adplugInstance = window.TrackerAudioEngine?.adplugModuleInstance;
             if (
@@ -582,24 +598,40 @@ window['playlist']=currentPlaylist; // 개발용
                 rawHardwareTick = (currentMs / 1000) * ((bTempo * tBeat) / 60);
             }
 
-            //const adjustedTick = rawHardwareTick / 8 ; // 가사정보 참조용 Tick
-            let adjustedTick = rawHardwareTick / 8 ; // 가사정보 참조용 Tick
-	        const track = currentPlaylist[playingIndex];
-			if(track.filename.toLocaleLowerCase().endsWith('.sop')){ //  sop 의 tick 정보는 맞지않음
-				// 임시조치
-				adjustedTick = adplugInstance._emu_get_current_position()/8 // 임시조치
-				//adjustedTick = adplugInstance._emu_get_current_position()/10 // 임시조치
-				//adjustedTick = rawHardwareTick // 임시조치
-				/*
-                const currentPlaylistTrack = currentPlaylist[playingIndex];
-                const bTempo =
-                    currentPlaylistTrack && currentPlaylistTrack.basicTempo ? currentPlaylistTrack.basicTempo : 120;
-                const tBeat =
-                    currentPlaylistTrack && currentPlaylistTrack.tickBeat ? currentPlaylistTrack.tickBeat : 24;
-                rawHardwareTick = (currentMs / 1000) * ((bTempo * tBeat) / 60);
-				adjustedTick = rawHardwareTick / 8 ;
-				*/
-			}
+            // 2. [포맷별 틱 오차 정밀 보정 코어]
+            let adjustedTick = 0;
+            const isSop = track.filename.toLowerCase().endsWith('.sop');
+
+            if (isSop) {
+                if (rawHardwareTick > 0) {
+                    adjustedTick = rawHardwareTick * 1.87; // sop의 가사추적값 정밀조정
+                } else {
+                    // [시도 B] 하드웨어 틱이 안 잡힐 경우, 절대 시간(seconds) 기반 강제 가속 공식
+                    const seconds = currentMs / 1000;
+                    const liveBpm = audioEngine && audioEngine.currentRuntimeTempo ? Math.round(audioEngine.currentRuntimeTempo) : (track.basicTempo || 120);
+                    const liveTickBeat = track.tickBeat || 24;
+                    
+                    // 기존에 끝에 나누던 (/ 8, / 4) 정수 장벽을 아예 없애고 곱하기로 변환하여 
+                    // 진행 속도를 기존 대비 16배 이상 끌어 올립니다.
+                    adjustedTick = seconds * ((liveBpm * liveTickBeat) / 60) * 2;
+                }
+
+                // 💡 [최후의 보루: 에뮬레이터 절대 위치값 직결]
+                // 만약 위 공식으로도 느리다면, 기존 코드에 있던 임시조치 수치인 아래 방식을 
+                // 나누기(/8) 없이 온전한 순정 대형 값으로 직접 찔러 넣어 봅니다.
+                // if (adplugInstance && typeof adplugInstance._emu_get_current_position === "function") {
+                //     adjustedTick = adplugInstance._emu_get_current_position(); 
+                // }
+
+				//adjustedTick = adplugInstance._emu_get_current_position()/8 // 임시조치
+            } else {
+                // IMS / ROL 등의 순정 규격 역산 필터
+                if (rawHardwareTick > 0) {
+                    adjustedTick = rawHardwareTick / 8;
+                } else {
+                    adjustedTick = (currentMs / 1000) * ((liveBpm * liveTickBeat) / 60) / 8;
+                }
+            }
 
             let left = 0;
             let right = currentIssData.records.length - 1;
@@ -754,7 +786,10 @@ window['playlist']=currentPlaylist; // 개발용
                     console.warn("뱅크 예외:", e);
 					track.bnkName = 'STANDARD.BNK'; // 뱅크파일 출력용
                 }
+			}
 
+			// 가사 읽기
+            if ([".ims", ".rol", ".sop"].includes(ext)) {
                 if (track.issFileObject) {
 //console.log('track.issFileObject',track.issFileObject);
 					track.issName = track.issFileObject.name; // 가사 파일명
@@ -775,8 +810,6 @@ window['playlist']=currentPlaylist; // 개발용
                         }
                     } catch (e) {}
                 }
-            } else {
-				
             }
 
             // 오디오 워크렛 스레드의 다음 트랙 연주 종료 확인 핸들러를 순정 규격 그대로 유지하여 시동 잠금 해제!
@@ -864,6 +897,7 @@ window.song = track; // 디버그용
 				</div>
 				`;
 			}else if(!currentIssData && ext=='.sop'){
+console.log('currentIssData',currentIssData)
 				let header = window.ChipTuneTitleParser.extractHeader(musicArrayBuffer, track.filename);
 				lyricsDisplay.innerHTML = `
 				<div class="lyrics-area">
@@ -1358,33 +1392,33 @@ window.song = track; // 디버그용
     // =================================================================
     // [변경 및 추가 영역] 파일 드롭다운 영역 전체화면 드라이버 통합
     // =================================================================
-    
+
     // 브라우저 윈도우 전체 영역에 드래그 진입 시 오버레이 활성화
     window.addEventListener("dragenter", (e) => {
         e.preventDefault();
-        dropZone.classList.add("drag-active");
+        dropZoneFull.classList.add("drag-active");
     });
 
     // 전체 화면 드롭존 영역 위에서 이동할 때 처리
-    dropZone.addEventListener("dragover", (e) => {
+    dropZoneFull.addEventListener("dragover", (e) => {
         e.preventDefault();
         // 기존 배경색 변경 로직 대신 클래스로 제어
-        dropZone.classList.add("drag-active"); 
+        dropZoneFull.classList.add("drag-active"); 
     });
 
     // 마우스가 브라우저 밖으로 나가거나 드래그가 취소될 때 오버레이 숨김
-    dropZone.addEventListener("dragleave", (e) => {
+    dropZoneFull.addEventListener("dragleave", (e) => {
         e.preventDefault();
-        // dropZone 내부 자식 요소들 간의 이동으로 인해 해제되는 현상 방지
-        if (e.relatedTarget === null || !dropZone.contains(e.relatedTarget)) {
-            dropZone.classList.remove("drag-active");
+        // dropZoneFull 내부 자식 요소들 간의 이동으로 인해 해제되는 현상 방지
+        if (e.relatedTarget === null || !dropZoneFull.contains(e.relatedTarget)) {
+            dropZoneFull.classList.remove("drag-active");
         }
     });
 
     // 파일이 최종 드롭 되었을 때 처리
-    dropZone.addEventListener("drop", async (e) => {
+    dropZoneFull.addEventListener("drop", async (e) => {
         e.preventDefault();
-        dropZone.classList.remove("drag-active"); // 전체 화면 해제
+        dropZoneFull.classList.remove("drag-active"); // 전체 화면 해제
 
         // 🎯 [다중 개별 파일 및 폴더 동시 탐색 하이브리드 드라이버 가동]
         const items = e.dataTransfer.items;
@@ -1444,7 +1478,43 @@ window.song = track; // 디버그용
     });
     // =================================================================
 
-	
+    /**
+     * 🎤 가사창 클릭 시 전체보기 팝업 열기
+     */
+    lyricsDisplay.style.cursor = "pointer"; // 마우스 커서를 손가락 모양으로 변경
+    lyricsDisplay.addEventListener("click", () => {
+        // 1. 현재 연주 중이거나 가사 데이터가 존재하지 않는 경우 예외 처리
+        if (!currentIssData || !currentIssData.scripts || currentIssData.scripts.length === 0) {
+            alert("현재 재생 중인 곡에 불러온 가사(.ISS) 정보가 없습니다.");
+            return;
+        }
+
+        // 2. ISS 가사 스크립트 배열을 하나의 문자열로 결합 (공백 줄바꿈 보정)
+        // 원문에 포함되어 있을지 모르는 미세 잡음 문자나 트레일링 공백을 제거하고 줄바꿈(\n)으로 합칩니다.
+        const fullLyricsText = currentIssData.scripts
+            .map(line => line.trimEnd())
+            .join("\n");
+
+        // 3. 팝업 창에 가사 텍스트 주입 및 레이어 노출
+        lyricsFullContent.innerText = fullLyricsText;
+        lyricsFullDialog.classList.remove("hidden");
+        lyricsFullDialogBackdrop.classList.remove("hidden");
+        
+        // 팝업이 열릴 때 항상 스크롤을 맨 위로 초기화
+        lyricsFullContent.scrollTop = 0; 
+    });
+
+    /**
+     * 닫기 버튼 및 배경 클릭 시 팝업 닫기
+     */
+    const closeLyricsDialog = () => {
+        lyricsFullDialog.classList.add("hidden");
+        lyricsFullDialogBackdrop.classList.add("hidden");
+    };
+
+    closeLyricsDialogBtn.addEventListener("click", closeLyricsDialog);
+    lyricsFullDialogBackdrop.addEventListener("click", closeLyricsDialog);
+
 	
 	/*/ console.log 가로채기 (실험용)
 	errorMessage.classList.remove('hidden');

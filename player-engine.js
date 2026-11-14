@@ -394,6 +394,21 @@ window.u8Array = u8Array; // 디버그용
                 currentRuntimeTempo = 120;
                 tickBeat = 24;
             } else if (type === "adplug" && adplugModuleInstance) {
+                // 1. 기존 에뮬레이터 완벽 청소 및 강제 초기화 단행
+                adplugModuleInstance._emu_teardown(); 
+
+
+                // 🎯 [뱃고동 소리 방지 코어] OPL 사운드 레지스터 강제 음소거 주입
+                // AdPlug 내부에 탑재된 에뮬레이터 레지스터 쓰기 기능이 가용하다면,
+                // 곡이 로드되기 직전에 채널의 볼륨/음높이 관련 레지스터(0x40~0x9F, 0xB0~0xB9 등)를 강제로 초기화합니다.
+                if (typeof adplugInstance === "object" && typeof adplugInstance._emu_write === "function") {
+                    console.log("%c[엔진] OPL 레지스터 잔류 주파수 완벽 무음 청소 기동", "color: #54ffff; font-weight: bold;");
+                    // AdLib 사운드 칩의 주요 레지스터 범위를 순회하며 공백(0)을 주사합니다.
+                    for (let reg = 0x01; reg <= 0xF5; reg++) {
+                        adplugModuleInstance._emu_write(reg, 0);
+                    }
+                }
+
                 const result = adplugModuleInstance._emu_init(SAMPLE_RATE);
                 if (result !== 0) throw new Error(`AdPlug 초기화 실패: ${result}`);
                 loadedModulePtr = 1;
@@ -410,6 +425,7 @@ window.u8Array = u8Array; // 디버그용
                     adplugModuleInstance._free(bnkPtr);
                 }
 
+                // 2. 파일 물리 적재 진행
                 wasmInputBufferPtr = adplugModuleInstance._malloc(fileSize);
                 adplugModuleInstance.HEAPU8.set(u8Array, wasmInputBufferPtr);
                 const fileNamePtr = adplugModuleInstance._malloc(filename.length + 1);
@@ -422,6 +438,7 @@ window.u8Array = u8Array; // 디버그용
                     throw new Error("AdPlug 적재 실패");
                 }
 
+                // 후속 곡 헤더 파싱 및 포지션 리셋 (기존 순정 유지)
                 if (window.ChipTuneTitleParser) {
                     if (isRolFile) {
                         const info = window.ChipTuneTitleParser.parseRolHeader(musicArrayBuffer, filename);
@@ -449,6 +466,12 @@ window.u8Array = u8Array; // 디버그용
                         }
                     }
                 }
+                
+                // 로드 완료 직후 첫 연산 전에 다시 한 번 에뮬레이터를 강제 Rewind 시킵니다.
+                if (typeof adplugModuleInstance._emu_rewind === "function") {
+                    adplugModuleInstance._emu_rewind();
+                }
+
                 currentRuntimeTempo = bTempo;
 //console.log('currentRuntimeTempo1',currentRuntimeTempo)
                 tickBeat = tBeat;

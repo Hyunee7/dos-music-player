@@ -749,4 +749,27 @@ hr {
     /* */
 }
 
-/*  */
+/* 드래그 앤 드롭 영역을 전체 화면 팝업 형태로 오버레이 */
+#dropZoneFull {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background-color: rgba(0, 0, 0, 0.4); /* 평소에는 투명하거나 반투명 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* 평소에는 마우스 클릭이 아래 요소를 통과하도록 설정 */
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* 파일이 윈도우 위로 들어왔을 때 활성화되는 클래스 */
+#dropZoneFull.drag-active {
+    pointer-events: auto; /* 드래그 중일 때는 이벤트를 받음 */
+    opacity: 1;
+    background-color: rgba(26, 26, 38, 0.85); /* 복고풍 테마 색상(var(--bg-main)) 계열 오버레이 */
+    border: 4px dashed var(--bg-select);
+}

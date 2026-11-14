@@ -85,6 +85,9 @@
         </div>
       </div>
     </div>
+    
+    <!-- 전체화면 드롭다운 레이어 -->
+            <div id="dropZoneFull" class="drop-zone"></div>
 
     <!-- 1. 최상단 타이틀 바 -->
     <div class="dos-title-bar">
@@ -220,6 +223,21 @@
       <div id="statusBarText" class="dos-status-item">대기</div>
       <div id="timeText" class="dos-status-item" style="display: flex;align-items: center;">--:--:--</div>
     </div>
+
+    <!-- 📄 가사 전체보기 팝업창 레이어 (기본값은 hidden으로 숨김) -->
+    <div id="lyricsFullDialogBackdrop" class="dos-dialog-backdrop hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 10000;"></div>
+    <div id="lyricsFullDialog" class="dos-dialog hidden" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 450px; max-width: 90%; max-height: 80vh; background: var(--bg-main, #1a1a26); border: 2px solid var(--bg-select, #aaaaaa); padding: 15px; z-index: 10001; display: flex; flex-direction: column; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
+        <!-- 팝업 헤더 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--bg-select, #aaaaaa); padding-bottom: 8px; margin-bottom: 10px;">
+            <span style="font-weight: bold; color: #54ffff;">📄 가사 전체보기</span>
+            <button id="closeLyricsDialogBtn" style="background: none; border: 1px solid var(--bg-select, #aaaaaa); color: #fff; cursor: pointer; padding: 2px 8px;">[X]</button>
+        </div>
+        <!-- 가사 본문 영역 (스크롤 가능) -->
+        <div id="lyricsFullContent" class="dos-playlist-scroll-area" style="flex: 1; overflow-y: auto; white-space: pre-wrap; font-family: monospace; line-height: 1.6; padding: 5px; color: #e2e8f0; text-align: center;">
+            <!-- 여기에 자바스크립트로 가사가 주입됩니다 -->
+        </div>
+    </div>
+
 
   <!-- index.html 최하단 스크립트 배치부 -->
   <!-- 1. 핵심 컴파일 껍데기 라이브러리를 먼저 안착시킵니다 -->
