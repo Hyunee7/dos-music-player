@@ -672,9 +672,37 @@ hr {
     
 }
 
+#errorMessage {
+    background-color: #000000 !important;      /* 완전한 흑색 화면 */
+    border: 1px solid var(--bg-select, #aaaaaa); /* 복고풍 테두리 유지 */
+    font-family: 'Courier New', 'Lucida Console', monospace; /* 고전 터미널 폰트 */
+    font-size: 11px;
+    color: #54ff54 !important;                  /* DOS 특유의 밝은 녹색 텍스트 */
+    padding: 8px;
+    line-height: 1.4;
+    overflow-y: auto;
+    /* 내부 그림자를 주어 옛날 CRT 브라운관 모니터 안쪽처럼 오목한 느낌 연출 */
+    box-shadow: inset 0 0 12px rgba(0, 255, 0, 0.25) !important; 
+}
+
 .dos-message-error {
-    max-height: 90px;
+  /*max-height: 90px;*/
+    max-height: 132px;
     overflow: auto;
+	font-size:10pt;
+}
+
+/* 📟 DOS 커서 깜빡임 효과 */
+.dos-blink {
+    animation: dos-cursor-blink 0.8s infinite steps(2, start);
+    color: #54ff54; /* 터미널 폰트와 동일한 인광 초록색 */
+    font-weight: bold;
+}
+
+@keyframes dos-cursor-blink {
+    to {
+        visibility: hidden;
+    }
 }
 
 /*
