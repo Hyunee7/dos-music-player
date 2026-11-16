@@ -722,7 +722,9 @@ window['playlist']=currentPlaylist; // 개발용
         const track = currentPlaylist[playingIndex];
         if (!track) return;
 //		track['bnkName']=''; // 뱅크 파일명 저장 버퍼
-		printDosLog(`C:\\MUSIC> LOADING "${track.filename}"...`); // 도스로그 : 곡 로딩 시작할 때
+		//printDosLog(`C:\\MUSIC> LOADING "${track.filename}"...`); // 도스로그 : 곡 로딩 시작할 때
+        // 📢 이벤트 발행! (오디오 로직 흐름을 방해하지 않고 바로 아래로 넘어갑니다)
+        triggerDosLog(`C:\\MUSIC> LOAD "${track.filename}" ...`, 20);
 
         const audioEngine = window.TrackerAudioEngine;
         if (!audioEngine) {
@@ -778,19 +780,22 @@ window['playlist']=currentPlaylist; // 개발용
                             `%c[로컬 드롭 뱅크] %c악기 뱅크(${targetBnkName}) 선점 도킹 완료`,
                             "color: #54ff54; font-weight:bold;"
                         );
-						printDosLog(`[BANK] LOCAL MAP DIRECT: "${targetBnkName}" LOCKED.`); // 도스로그 : 뱅크 도킹 성공 시
+						//printDosLog(`[BANK] LOCAL MAP DIRECT: "${targetBnkName}" LOCKED.`); // 도스로그 : 뱅크 도킹 성공 시
+						triggerDosLog(`[BANK] LOCAL MAP DIRECT: "${targetBnkName}" LOCKED.`); // 도스로그 : 뱅크 도킹 성공 시
 
                         const localBnkFile = window.uploadedBnkMap.get(targetBnkName.toLowerCase());
                         bnkArrayBuffer = await localBnkFile.arrayBuffer();
 						track.bnkName = targetBnkName; // 뱅크파일 출력용
                     } else if (window.uploadedBnkMap && window.uploadedBnkMap.has("standard.bnk")) {
                         console.log(`%c[공유 뱅크] %c로컬 STANDARD.BNK 매핑 완료`, "color: #54ffff; font-weight:bold;");
-						printDosLog(`[BANK] STANDARD SHARE MAP ACTIVE: "STANDARD.BNK" LOADED.`); // 도스로그 : 뱅크 도킹 성공 시
+						//printDosLog(`[BANK] STANDARD SHARE MAP ACTIVE: "STANDARD.BNK" LOADED.`); // 도스로그 : 뱅크 도킹 성공 시
+						triggerDosLog(`[BANK] STANDARD SHARE MAP ACTIVE: "STANDARD.BNK" LOADED.`); // 도스로그 : 뱅크 도킹 성공 시
                         const localStdBnk = window.uploadedBnkMap.get("standard.bnk");
                         bnkArrayBuffer = await localStdBnk.arrayBuffer();
 						targetBnkName = 'STANDARD.BNK'; // 뱅크파일 출력용
                     } else {
-						printDosLog(`[BANK] DETECTING SERVER REPOSITORY FOR INSTRUMENT DATA...`); // 도스로그 : 뱅크 도킹 성공 시
+						//printDosLog(`[BANK] DETECTING SERVER REPOSITORY FOR INSTRUMENT DATA...`); // 도스로그 : 뱅크 도킹 성공 시
+						triggerDosLog(`[BANK] DETECTING SERVER REPOSITORY FOR INSTRUMENT DATA...`); // 도스로그 : 뱅크 도킹 성공 시
                         //let primaryBnkPath = track.fileObject ? `./${targetBnkName}` : `./folder/${targetBnkName}`;
                         let primaryBnkPath = targetBnkName;
                         let secondaryBnkPath = track.fileObject ? "./STANDARD.BNK" : "./folder/STANDARD.BNK";
@@ -849,9 +854,11 @@ window['playlist']=currentPlaylist; // 개발용
 				// 도스로그 : 가사 매핑할 때
 				if(currentIssData){
 					if(ext == '.sop'){
-						printDosLog(`[LYRICS] ISS FILE BOUND. SYNC RATIO: 1.87`); // 도스로그 : 가사 매핑할 때
+						//printDosLog(`[LYRICS] ISS FILE BOUND. SYNC RATIO: 1.87`); // 도스로그 : 가사 매핑할 때
+						triggerDosLog(`[LYRICS] ISS FILE BOUND. SYNC RATIO: 1.87`); // 도스로그 : 가사 매핑할 때
 					}else{
-						printDosLog(`[LYRICS] ISS FILE BOUND.`); // 도스로그 : 가사 매핑할 때
+						//printDosLog(`[LYRICS] ISS FILE BOUND.`); // 도스로그 : 가사 매핑할 때
+						triggerDosLog(`[LYRICS] ISS FILE BOUND.`); // 도스로그 : 가사 매핑할 때
 					}
 				}
             }
@@ -892,16 +899,18 @@ window['playlist']=currentPlaylist; // 개발용
             //errorMessage.innerHTML += `<div>[AUDIO] NOW PLAYING: "${track.title}" (BPM: ${bTempo} / TICK: ${tBeat})</div>`;
             //errorMessage.innerHTML += `<div>C:\\MUSIC&gt; <span class="dos-blink">_</span></div>`; // 깜빡이는 커서 연출
             //errorMessage.scrollTop = errorMessage.scrollHeight;			
-			printDosLog(`[SYSTEM] ENGINE TYPE "${currentEngine.toUpperCase()}" INITIALIZED.`); // 도스로그 : 재생 시작할 때
-			printDosLog(`[AUDIO] NOW PLAYING: "${track.title}" (BPM: ${track.bTempo||120} / TICK: ${track.tBeat||24})`); // 도스로그 : 재생 시작할 때
+			//printDosLog(`[SYSTEM] ENGINE TYPE "${currentEngine.toUpperCase()}" INITIALIZED.`); // 도스로그 : 재생 시작할 때
+			//printDosLog(`[AUDIO] NOW PLAYING: "${track.title}" (BPM: ${track.bTempo||120} / TICK: ${track.tBeat||24})`); // 도스로그 : 재생 시작할 때
+			triggerDosLog(`[SYSTEM] ENGINE TYPE "${currentEngine.toUpperCase()}" INITIALIZED.`,10); // 도스로그 : 재생 시작할 때
+			triggerDosLog(`[AUDIO] NOW PLAYING: "${track.title}" (BPM: ${track.bTempo||120} / TICK: ${track.tBeat||24})`,15); // 도스로그 : 재생 시작할 때
 			//printDosLog(`C:\\MUSIC&gt; <span class="dos-blink">_</span>`); // 도스로그 : 재생 시작할 때
 			// 🎯 새로운 로그를 찍기 전에, 기존에 깜빡이던 임시 프롬프트 라인이 있다면 제거하거나 고정시킵니다.
-			const prevPrompt = document.getElementById("dosPromptLine");
-			if (prevPrompt) {
-				prevPrompt.removeAttribute("id"); // ID를 제거해서 중복 방지
-				prevPrompt.innerHTML = `C:\\MUSIC&gt;`; // 깜빡이던 커서 제거
-			}
-			printDosLog(`<span id="dosPromptLine">C:\\MUSIC&gt; <span class="dos-blink">_</span></span>`); // 도스로그 : 재생 시작할 때
+			//const prevPrompt = document.getElementById("dosPromptLine");
+			//if (prevPrompt) {
+			//	prevPrompt.removeAttribute("id"); // ID를 제거해서 중복 방지
+			//	prevPrompt.innerHTML = `C:\\MUSIC&gt;`; // 깜빡이던 커서 제거
+			//}
+			//printDosLog(`<span id="dosPromptLine">C:\\MUSIC&gt; <span class="dos-blink">_</span></span>`); // 도스로그 : 재생 시작할 때
 			// 버튼 상태 변경
             btnPlay.innerHTML = imgPause;
             btnStop.removeAttribute("disabled");
@@ -1012,7 +1021,8 @@ console.log('currentIssData',currentIssData)
 			//errorMessage.innerHTML += `<div>> ${err}</div>`;
             statusBarText.innerText = `적재 실패: ${track.title}`;
 			
-			printDosLog(`[ERROR] LOAD FAILED: ${err.message}`); // 도스로그 : 에러 발생 시
+			//printDosLog(`[ERROR] LOAD FAILED: ${err.message}`); // 도스로그 : 에러 발생 시
+			triggerDosLog(`[ERROR] LOAD FAILED: ${err.message}`); // 도스로그 : 에러 발생 시
         } finally {
             if (overlay) overlay.classList.add("hidden");
         }
@@ -1300,7 +1310,8 @@ console.log('currentIssData',currentIssData)
 				//printDosLog(`[STOP] PLAYBACK HALTED.`); // 도스로그 : 정지
             }
             audioEngine.pause();
-			printDosLog(`[PAUSE]`); // 도스로그 : 일시정지
+			//printDosLog(`[PAUSE]`); // 도스로그 : 일시정지
+			triggerDosLog(`[PAUSE]`); // 도스로그 : 일시정지
             btnPlay.innerHTML = imgPausePlay;
 	        const track = currentPlaylist[playingIndex];
 			statusBarText.innerText = `일시정지 - ${getTrack(track)}`;
@@ -1312,7 +1323,8 @@ console.log('currentIssData',currentIssData)
                 }
 				console.log('일시정지 후 재생');
                 audioEngine.play();
-				printDosLog(`[RESUME]`); // 도스로그 : 재생
+				//printDosLog(`[RESUME]`); // 도스로그 : 재생
+				triggerDosLog(`[RESUME]`); // 도스로그 : 재생
                 btnPlay.innerHTML = imgPause;
                 if (typeof window.triggerBufferWriteFeedGlobal === "function") {
                     window.triggerBufferWriteFeedGlobal();
@@ -1322,7 +1334,8 @@ console.log('currentIssData',currentIssData)
 				runStateSyncLoop(); // 상태 체크 루프 시작
 				renderPlaylist(); // 재생 목록 갱신(연주중 표시)
             } else { // 선택 곡 재생
-				printDosLog(`[PLAY]`); // 도스로그 : 재생
+				//printDosLog(`[PLAY]`); // 도스로그 : 재생
+				triggerDosLog(`[PLAY]`); // 도스로그 : 재생
 				playingIndex = selectedIndex; // 재생목록에 선택된 곡을 연주함
 				loadAndPlayTrack();
 			}
@@ -1345,12 +1358,15 @@ console.log('currentIssData',currentIssData)
 		renderPlaylist(); // 재생 목록 갱신(연주중 표시 해제)
         clearInterval(stateUpdateInterval); // 상태 체크 루프 중지
 		//printDosLog(`[STOP] PLAYBACK HALTED.`); // 도스로그 : 정지
-		printDosLog(`[AUDIO] PLAYBACK HALTED BY USER. CORE SUSPENDED.`); // 도스로그 : 정지
-		printDosLog(`C:\\MUSIC&gt; _`); // 도스로그 : 정지
+		//printDosLog(`[AUDIO] PLAYBACK HALTED BY USER. CORE SUSPENDED.`); // 도스로그 : 정지
+		//printDosLog(`C:\\MUSIC&gt; _`); // 도스로그 : 정지
+		triggerDosLog(`[AUDIO] PLAYBACK HALTED BY USER. CORE SUSPENDED.`,15); // 도스로그 : 정지
+		//triggerDosLog(`C:\\MUSIC&gt; _`); // 도스로그 : 정지
 		
     });
     btnNext.addEventListener("click", () => { // 다음곡
-		printDosLog(`[NEXT]`); // 도스로그 : 다음곡
+		//printDosLog(`[NEXT]`); // 도스로그 : 다음곡
+		triggerDosLog(`[NEXT]`); // 도스로그 : 다음곡
         if (playingIndex < currentPlaylist.length - 1) {
             playingIndex++;
             selectedIndex = playingIndex;
@@ -1358,7 +1374,8 @@ console.log('currentIssData',currentIssData)
         }
     });
     btnPrev.addEventListener("click", () => {  // 이전곡
-		printDosLog(`[PREV]`); // 도스로그 : 이전곡
+		//printDosLog(`[PREV]`); // 도스로그 : 이전곡
+		triggerDosLog(`[PREV]`); // 도스로그 : 이전곡
         if (playingIndex > 0) {
             playingIndex--;
             selectedIndex = playingIndex;
@@ -1599,26 +1616,6 @@ console.log('currentIssData',currentIssData)
     closeLyricsDialogBtn.addEventListener("click", closeLyricsDialog);
     lyricsFullDialogBackdrop.addEventListener("click", closeLyricsDialog);
 
-	// 도스식 로그출력 - 거의 사용않던 에러메시지창을 재활용함.
-	//errorMessage.classList.remove('hidden');
-	function printDosLog(message) {
-		//const consoleEl = document.getElementById("dosLogConsole");
-		const consoleEl = document.getElementById("errorMessage");
-		if (!consoleEl) return;
-
-		const line = document.createElement("div");
-		// DOS 감성을 위해 현재 시각을 [07:29:45] 형태로 앞에 붙여줍니다.
-		const now = new Date();
-		const timeStr = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}]`;
-		
-		line.innerHTML = `<span style="color: #888;">${timeStr}</span> <span style="color: #54ff54;">${message}</span>`;
-		consoleEl.appendChild(line);
-
-		// 🎯 [자동 스크롤] 새로운 로그가 오면 DOS 창처럼 위로 주르륵 올라가도록 스크롤 최하단 이동
-		consoleEl.scrollTop = consoleEl.scrollHeight;
-	}
-
-	
 	/*/ console.log 가로채기 (실험용)
 	errorMessage.classList.remove('hidden');
     (function () {
@@ -1650,5 +1647,6 @@ console.log('currentIssData',currentIssData)
     resizeSpectrumCanvases(); // 스펙트럼비주얼라이즈 그리기
     requestAnimationFrame(runVisualizerEngineLoop); // 스펙트럼비주얼라이즈 그리기 함수를 반복실행함
     autoScanDefaultPlaylistMetadata(); // 플레이리스트 목록의 메타정보 갱신
-	printDosLog(`C:\\MUSIC> PLAYER.EXE INITIALIZED. READY TO FEED.`); // 도스로그 : 시작할 때
+	//printDosLog(`C:\\MUSIC> PLAYER.EXE INITIALIZED. READY TO FEED.`); // 도스로그 : 시작할 때
+	triggerDosLog(`C:\\MUSIC> PLAYER.EXE INITIALIZED. READY TO FEED.`,20); // 도스로그 : 시작할 때
 });
