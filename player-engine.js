@@ -4,7 +4,7 @@
 
 window.TrackerAudioEngine = (function () {
     let SAMPLE_RATE = 44100;
-    const CHUNK_FRAMES = 4096;
+	const CHUNK_FRAMES = 8192; // 4096에서 8192로 확장하여 오디오 끊김 원천 차단
 
     let audioCtx = null;
     let gainNode = null;

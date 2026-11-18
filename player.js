@@ -98,10 +98,15 @@ document.addEventListener("DOMContentLoaded", async () => {
      */
     //////스펙트럼.초기화.시작//////
     const MASTER_BAR_COUNT = 16;
-    const MASTER_SEGMENT_COUNT = 40;
+    const MASTER_SEGMENT_COUNT = 20; // 40에서 20으로 축소
     const MASTER_PEAK_HOLD_FRAMES = 15;
     const MASTER_PEAK_FALL_ACCELERATION = 0.3;
     const MASTER_VALUE_FALL_SPEED = 4;
+
+	// 비주얼라이저(스펙트럼?) 관련 변수
+    let lastVisualizerTime = 0;
+    const targetInterval = 1000 / 15; // 30fps(33ms)에서 15fps(66ms)로 하향
+
     const masterBarData = Array.from({ length: MASTER_BAR_COUNT }, () => ({
         value: 0,
         peak: 0,
@@ -336,10 +341,6 @@ window['playlist']=currentPlaylist; // 개발용
     function renderSpectrumLEDs() {
         for (let i = 0; i < MASTER_BAR_COUNT; i++) renderSingleBar(i);
     }
-
-	// 비주얼라이저(스펙트럼?) 관련 변수
-    let lastVisualizerTime = 0;
-    const targetInterval = 1000 / 30;
 
     /**
      * 실시간 주파수 가로채기
@@ -711,7 +712,7 @@ window['playlist']=currentPlaylist; // 개발용
                     } // if (targetLineEl) {
                 } // if (lyricsFullDialog && !lyricsFullDialog.classList.contains("hidden")) {
             } // if (resultIndex >= 0) {
-        }, 80);
+        }, 250); // 기존 80에서 250~300으로 완화
     }
 
     /**
