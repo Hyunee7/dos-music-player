@@ -342,13 +342,18 @@ window['playlist']=currentPlaylist; // 개발용
         for (let i = 0; i < MASTER_BAR_COUNT; i++) renderSingleBar(i);
     }
 
+	// =================================================================
+	// 1. 메모리 재사용을 위한 전역 비주얼라이저 버퍼 선언 (GC 프리 방지)
+	// =================================================================
+	let cachedVisualizerBuffer = null; 
+
     /**
      * 실시간 주파수 가로채기
      */
     function runVisualizerEngineLoop(timestamp) {
         requestAnimationFrame(runVisualizerEngineLoop);
         if (!window.TrackerAudioEngine) return;
-        if (timestamp - lastVisualizerTime < targetInterval) return;
+	    if (timestamp - lastVisualizerTime < targetInterval) return; // (이전 가이드대로 15fps 적용 필수)
         lastVisualizerTime = timestamp;
         const analyser = window.TrackerAudioEngine.getAnalyserNode();
         if (!analyser) {
@@ -370,43 +375,52 @@ window['playlist']=currentPlaylist; // 개발용
             renderSpectrumLEDs();
             return;
         }
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        // WASM 오디오 스레드가 공출해 낸 원본 주파수 데이터 분해 수령
-        analyser.getByteFrequencyData(dataArray);
-        const skipBins = 2;
-        const usableBins = bufferLength - skipBins;
-        const binsPerBar = Math.floor(usableBins / MASTER_BAR_COUNT);
+    
+		const bufferLength = analyser.frequencyBinCount;
+		
+		// 매번 new Uint8Array를 생성하지 않고 가용 버퍼를 최초 1회만 할당하여 재사용!
+		if (!cachedVisualizerBuffer || cachedVisualizerBuffer.length !== bufferLength) {
+			cachedVisualizerBuffer = new Uint8Array(bufferLength);
+		}
+		
+		// WASM 오디오 스레드가 공출해 낸 원본 주파수 데이터 분해 수령
+		// 기존에 매번 새로 만들던 뉴 배열 라인을 걷어내고 캐시 버퍼 주입
+		analyser.getByteFrequencyData(cachedVisualizerBuffer); 
+		
+		const skipBins = 2;
+		const usableBins = bufferLength - skipBins;
+		const binsPerBar = Math.floor(usableBins / MASTER_BAR_COUNT);
 
         // 가용 주파수 스펙트럼 대역을 16개 대역폭으로 정밀 쪼개어 masterBarData 버퍼 배열에 주입
-        for (let i = 0; i < MASTER_BAR_COUNT; i++) {
+		for (let i = 0; i < MASTER_BAR_COUNT; i++) {
             // 주파수 평균치 산출 및 하강 감쇠 속도 계산
-            const startBin = skipBins + i * binsPerBar;
-            const endBin = Math.min(startBin + binsPerBar, bufferLength);
-            let sum = 0;
-            for (let j = startBin; j < endBin; j++) sum += dataArray[j];
-            const avg = sum / (endBin - startBin);
-            const rawValue = Math.round((avg / 255) * 100);
-            const prev = masterBarData[i];
-            let value = rawValue >= prev.value ? rawValue : Math.max(rawValue, prev.value - MASTER_VALUE_FALL_SPEED);
-            let peak = prev.peak;
-            let peakHoldTime = prev.peakHoldTime;
-            let peakFallSpeed = prev.peakFallSpeed;
-            if (value >= peak) {
-                peak = value;
-                peakHoldTime = MASTER_PEAK_HOLD_FRAMES;
-                peakFallSpeed = 0;
-            } else if (peakHoldTime > 0) {
-                peakHoldTime--;
-            } else {
-                peakFallSpeed += MASTER_PEAK_FALL_ACCELERATION;
-                peak = Math.max(0, peak - peakFallSpeed);
-            }
-            masterBarData[i] = { value, peak, peakHoldTime, peakFallSpeed };
-        }
+			const startBin = skipBins + i * binsPerBar;
+			const endBin = Math.min(startBin + binsPerBar, bufferLength);
+			let sum = 0;
+			for (let j = startBin; j < endBin; j++) sum += cachedVisualizerBuffer[j]; // 캐시 버퍼 참조
+			
+			const avg = sum / (endBin - startBin);
+			const rawValue = Math.round((avg / 255) * 100);
+			const prev = masterBarData[i];
+			let value = rawValue >= prev.value ? rawValue : Math.max(rawValue, prev.value - MASTER_VALUE_FALL_SPEED);
+			let peak = prev.peak;
+			let peakHoldTime = prev.peakHoldTime;
+			let peakFallSpeed = prev.peakFallSpeed;
+			if (value >= peak) {
+				peak = value;
+				peakHoldTime = MASTER_PEAK_HOLD_FRAMES;
+				peakFallSpeed = 0;
+			} else if (peakHoldTime > 0) {
+				peakHoldTime--;
+			} else {
+				peakFallSpeed += MASTER_PEAK_FALL_ACCELERATION;
+				peak = Math.max(0, peak - peakFallSpeed);
+			}
+			masterBarData[i] = { value, peak, peakHoldTime, peakFallSpeed };
+		}
         // 🎯 [드로잉 명령 하강 하달] 가공된 데이터 버퍼를 바탕으로 화면 그리기 함수 강제 호출!
-        renderSpectrumLEDs();
-    }
+		renderSpectrumLEDs();
+	}
 
 	/**
 	 * 파일 버퍼 내용을 오디오 재생 모듈에 전달
@@ -508,7 +522,45 @@ window['playlist']=currentPlaylist; // 개발용
         });
     }
     window.triggerBufferWriteFeedGlobal = triggerBufferWriteFeed; // 전역 함수 등록
-	
+
+
+	// =================================================================
+	// 2. 가사창 innerHTML 폭탄 제거 및 DOM 경량 직결형 전환
+	// =================================================================
+	// 무거운 innerHTML 초기 구조화를 방지하기 위해 player 구동 시 최초 1회만 뼈대를 만들어둡니다.
+	function initializeLyricsDOM() {
+		if (!lyricsDisplay) return;
+		lyricsDisplay.innerHTML = `
+		  <div class="lyrics-area" style="pointer-events: none;">
+			<div class="lyrics-now">
+			  <span id="lyrHighlight" class="lyrics-highlight"></span><span id="lyrNormal" class="lyrics-normal"></span>
+			</div>
+			<div class="lyrics-next"><span id="lyrNext"></span></div>
+		  </div>`;
+	}
+
+	// 기존 runStateSyncLoop 내부의 가사 출력 (innerHTML 갱신부)을 아래 방식으로 대체합니다.
+	// (이 함수를 runStateSyncLoop 내부의 lyricsDisplay.innerHTML = ... 자리에 교체 주입)
+	function updateLyricsDOMFast(currentLine, highlightEnd, nextLine) {
+		const elHighlight = document.getElementById("lyrHighlight");
+		const elNormal = document.getElementById("lyrNormal");
+		const elNext = document.getElementById("lyrNext");
+		
+		// 만약 최초 실행으로 구조가 없다면 구조 생성
+		if (!elHighlight || !elNormal || !elNext) {
+			initializeLyricsDOM();
+			return;
+		}
+		
+		// innerHTML 문자열 파싱 없이 브라우저 텍스트 노드 알맹이만 직접 변경하여 부하 완전 차단
+		const textHighlight = currentLine.substring(0, highlightEnd);
+		const textNormal = currentLine.substring(highlightEnd);
+		
+		if (elHighlight.textContent !== textHighlight) elHighlight.textContent = textHighlight;
+		if (elNormal.textContent !== textNormal) elNormal.textContent = textNormal;
+		if (elNext.textContent !== nextLine) elNext.textContent = nextLine;
+	}
+
     /**
      * player.js - Part 4-A: 가사/시간 동기화 마스터 루프
      */
@@ -679,6 +731,7 @@ window['playlist']=currentPlaylist; // 개발용
                 
                 // 🎯 [수정 및 버그 치유 지점] 
                 // 전체를innerHTML로 덮어쓰지 않고 내부 구조만 안전하게 갱신하여 클릭 이벤트를 살려둡니다.
+				/*
                 lyricsDisplay.innerHTML = `
                   <div class="lyrics-area" style="pointer-events: none;">
                     <div class="lyrics-now">
@@ -686,7 +739,9 @@ window['playlist']=currentPlaylist; // 개발용
                     </div>
                     <div class="lyrics-next"><span>${nextLine}</span></div>
                   </div>`;
-
+				*/
+				updateLyricsDOMFast(currentLine, highlightEnd, nextLine);
+					
                 // 🎯 [전체 가사 실시간 하이라이트 & 자동 스크롤 추적 엔진]
                 if (lyricsFullDialog && !lyricsFullDialog.classList.contains("hidden")) {
                     const currentLineIndex = currentRecord.line;
