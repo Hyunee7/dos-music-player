@@ -94,35 +94,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const canvas = document.getElementById("visualizerCanvas");
     /**
-     * player.js - Part 2: 현재 연주 중인 트랙(dos-list-item-playing) 실시간 반전 점등식 플레이리스트 렌더러 (순정)
+     * 현재 연주 중인 트랙(dos-list-item-playing) 실시간 반전 점등식 플레이리스트 렌더러 (순정)
      */
     //////스펙트럼.초기화.시작//////
     const MASTER_BAR_COUNT = 16;
-    const MASTER_SEGMENT_COUNT = 20; // 40에서 20으로 축소
+    const MASTER_SEGMENT_COUNT = 30; // 40에서 20으로 축소
     const MASTER_PEAK_HOLD_FRAMES = 15;
     const MASTER_PEAK_FALL_ACCELERATION = 0.3;
     const MASTER_VALUE_FALL_SPEED = 4;
 
 	// 비주얼라이저(스펙트럼?) 관련 변수
     let lastVisualizerTime = 0;
-    const targetInterval = 1000 / 15; // 30fps(33ms)에서 15fps(66ms)로 하향
+    const targetInterval = 1000 / 24; // 30fps(33ms)에서 15fps(66ms)로 하향
 
-    const masterBarData = Array.from({ length: MASTER_BAR_COUNT }, () => ({
-        value: 0,
-        peak: 0,
-        peakHoldTime: 0,
-        peakFallSpeed: 0,
-    }));
-	/*
-    const masterColors = {
-        inactive: "#1a1a26",
-        low: "#00a800",
-        mid: "#a8a800",
-        high: "#7b1818",
-        peak: "#54ffff",
-        barBg: "#000000",
-    };
-	*/
+	// 🎯 [수정 후] 초기 구동 시 바닥 격자에 하이라이트 한 칸을 미리 점등
+	const masterBarData = Array.from({ length: MASTER_BAR_COUNT }, () => ({
+		value: 0,
+		peak: 2.5, // 40층 중 1층에 해당하는 최저값 주입 (100% / 40 = 2.5%)
+		peakHoldTime: 0,
+		peakFallSpeed: 0,
+	}));
+
     const masterColors = {
         inactive: "#1a1a26",
         low: "#4a5568",
@@ -353,11 +345,12 @@ window['playlist']=currentPlaylist; // 개발용
     function runVisualizerEngineLoop(timestamp) {
         requestAnimationFrame(runVisualizerEngineLoop);
         if (!window.TrackerAudioEngine) return;
-	    if (timestamp - lastVisualizerTime < targetInterval) return; // (이전 가이드대로 15fps 적용 필수)
+	    if (timestamp - lastVisualizerTime < targetInterval) return; // 15fps~30fps 인터벌 적용
         lastVisualizerTime = timestamp;
         const analyser = window.TrackerAudioEngine.getAnalyserNode();
         if (!analyser) {
             // 가용 주파수 스펙트럼 대역을 16개 대역폭으로 정밀 쪼개어 masterBarData 버퍼 배열에 주입
+	        // [소리가 없을 때 강제 하향 감쇠 구간]
             for (let i = 0; i < MASTER_BAR_COUNT; i++) {
                 const prev = masterBarData[i];
                 let value = Math.max(0, prev.value - MASTER_VALUE_FALL_SPEED);
@@ -367,7 +360,8 @@ window['playlist']=currentPlaylist; // 개발용
                 if (peakHoldTime > 0) peakHoldTime--;
                 else {
                     peakFallSpeed += MASTER_PEAK_FALL_ACCELERATION;
-                    peak = Math.max(0, peak - peakFallSpeed);
+					// 🎯 최저 피크값 방어선 주입 (바닥에서 완전 소멸 방지)
+					peak = Math.max(2.5, peak - peakFallSpeed); 
                 }
                 masterBarData[i] = { value, peak, peakHoldTime, peakFallSpeed };
             }
@@ -392,6 +386,7 @@ window['playlist']=currentPlaylist; // 개발용
 		const binsPerBar = Math.floor(usableBins / MASTER_BAR_COUNT);
 
         // 가용 주파수 스펙트럼 대역을 16개 대역폭으로 정밀 쪼개어 masterBarData 버퍼 배열에 주입
+	    // [실시간 사운드 주파수 분석 및 드로우 맵 갱신 구간]
 		for (let i = 0; i < MASTER_BAR_COUNT; i++) {
             // 주파수 평균치 산출 및 하강 감쇠 속도 계산
 			const startBin = skipBins + i * binsPerBar;
@@ -414,7 +409,8 @@ window['playlist']=currentPlaylist; // 개발용
 				peakHoldTime--;
 			} else {
 				peakFallSpeed += MASTER_PEAK_FALL_ACCELERATION;
-				peak = Math.max(0, peak - peakFallSpeed);
+				// 🎯 실시간 연주 중 소리가 작아져 낙하할 때도 1층 밑으로는 사라지지 않도록 홀딩
+				peak = Math.max(2.5, peak - peakFallSpeed); 
 			}
 			masterBarData[i] = { value, peak, peakHoldTime, peakFallSpeed };
 		}
@@ -767,7 +763,7 @@ window['playlist']=currentPlaylist; // 개발용
                     } // if (targetLineEl) {
                 } // if (lyricsFullDialog && !lyricsFullDialog.classList.contains("hidden")) {
             } // if (resultIndex >= 0) {
-        }, 250); // 기존 80에서 250~300으로 완화
+        }, 80); // 기존 80에서 250~300으로 완화
     }
 
     /**
@@ -1628,14 +1624,27 @@ console.log('currentIssData',currentIssData)
      * 🎤 가사창 클릭 시 전체보기 팝업 열기 
 	 * (실시간 강조형 고도화)
 	 * (재생 중 무한 클릭 가용 드라이버)
+     * (연주 일시정지 버그 완벽 치유 엔진)
      */
     if (lyricsDisplay) {
         lyricsDisplay.style.cursor = "pointer";
         
         // 기존의 이벤트를 초기화하고 안전하게 재등록
+        // 기존의 이벤트를 안전하게 재등록
         lyricsDisplay.onclick = () => {
+            // 🎯 [버그 해결 핵심] 연주를 중지시키는 브라우저 강제 락(alert)을 전면 철폐합니다!
             if (!currentIssData || !currentIssData.scripts || currentIssData.scripts.length === 0) {
-                alert("현재 재생 중인 곡에 불러온 가사(.ISS) 정보가 없습니다.");
+                // 시스템 얼럿 대신, 하단 DOS 레트로 로그 화면에 정중하게 에러 알림을 찍어 연주를 보존합니다.
+                triggerDosLog(`[ERROR] SHOW FULL LYRICS FAILED: NO LYRICS (.ISS) BOUND.`, 10);
+                
+                // 가사창 내부 텍스트를 잠시 깜빡이게 유도하여 가사가 없음을 사용자에게 시각적으로 안내 (선택사항)
+                statusBarText.innerText = `가사 정보가 존재하지 않는 트랙입니다.`;
+                setTimeout(() => {
+                    if (window.TrackerAudioEngine && window.TrackerAudioEngine.getPlaybackState()?.isPlaying) {
+                        const track = currentPlaylist[playingIndex];
+                        statusBarText.innerText = `재생중 - ${getTrack(track)}`;
+                    }
+                }, 2000);
                 return;
             }
 
@@ -1654,7 +1663,7 @@ console.log('currentIssData',currentIssData)
                 lyricsFullContent.appendChild(lineDiv);
             });
 
-            // 2. 팝업 창 레이어 즉시 노출
+            // 2. 팝업 창 레이어 즉시 노출 (음악 정지 없이 안전하게 처리)
             lyricsFullDialog.classList.remove("hidden");
             lyricsFullDialogBackdrop.classList.remove("hidden");
             lyricsFullContent.scrollTop = 0;
