@@ -109,19 +109,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	// 🎯 [수정 후] 초기 구동 시 바닥 격자에 하이라이트 한 칸을 미리 점등
 	const masterBarData = Array.from({ length: MASTER_BAR_COUNT }, () => ({
-		value: 0,
-		peak: 2.5, // 40층 중 1층에 해당하는 최저값 주입 (100% / 40 = 2.5%)
-		peakHoldTime: 0,
+		value        : 0,
+		peak         : 2.5, // 40층 중 1층에 해당하는 최저값 주입 (100% / 40 = 2.5%)
+		peakHoldTime : 0,
 		peakFallSpeed: 0,
 	}));
 
-    const masterColors = {
+    const masterColors = { // 비주얼라이저 색상
         inactive: "#1a1a26",
-        low: "#4a5568",
-        mid: "#6b7a8f",
-        high: "#8fa0b8",
-        peak: "#aaaaaa",
-        barBg: "#000000",
+        low     : "#4a5568",
+        mid     : "#6b7a8f",
+        high    : "#8fa0b8",
+        peak    : "#aaaaaa",
+        barBg   : "#000000",
     };
 
 	// 컨테이너에 16개 스팩트럼바 캔버스를 그림
@@ -536,8 +536,7 @@ window['playlist']=currentPlaylist; // 개발용
 	}
 
 	// 기존 runStateSyncLoop 내부의 가사 출력 (innerHTML 갱신부)을 아래 방식으로 대체합니다.
-	// (이 함수를 runStateSyncLoop 내부의 lyricsDisplay.innerHTML = ... 자리에 교체 주입)
-	function updateLyricsDOMFast(currentLine, highlightEnd, nextLine) {
+	function updateLyricsDOMFast(lyric) {
 		const elHighlight = document.getElementById("lyrHighlight");
 		const elNormal = document.getElementById("lyrNormal");
 		const elNext = document.getElementById("lyrNext");
@@ -549,16 +548,16 @@ window['playlist']=currentPlaylist; // 개발용
 		}
 		
 		// innerHTML 문자열 파싱 없이 브라우저 텍스트 노드 알맹이만 직접 변경하여 부하 완전 차단
-		const textHighlight = currentLine.substring(0, highlightEnd);
-		const textNormal = currentLine.substring(highlightEnd);
+		const textHighlight = lyric.currentLine.substring(0, lyric.highlightEnd);
+		const textNormal = lyric.currentLine.substring(lyric.highlightEnd);
 		
 		if (elHighlight.textContent !== textHighlight) elHighlight.textContent = textHighlight;
 		if (elNormal.textContent !== textNormal) elNormal.textContent = textNormal;
-		if (elNext.textContent !== nextLine) elNext.textContent = nextLine;
+		if (elNext.textContent !== lyric.nextLine) elNext.textContent = lyric.nextLine;
 	}
 
     /**
-     * player.js - Part 4-A: 가사/시간 동기화 마스터 루프
+     * 가사/시간 동기화
      */
     function runStateSyncLoop() {
         clearInterval(stateUpdateInterval);
@@ -567,7 +566,7 @@ window['playlist']=currentPlaylist; // 개발용
             const audioState = audioEngine ? audioEngine.getPlaybackState() : null;
 
 			// 가사음슴 재생시간/전체시간 출력
-            if (!audioState || !currentIssData || (audioState.currentPositionMs === 0 && !audioState.isPlaying)) {
+            if (!audioState || !Lyric.currentIssData || (audioState.currentPositionMs === 0 && !audioState.isPlaying)) {
                 const tempoElement = document.getElementById("tempoDisplayValue");
                 if (tempoElement) tempoElement.innerText = "---";
                 //lyricsDisplay.innerHTML = `가사 음슴`;
@@ -626,7 +625,7 @@ window['playlist']=currentPlaylist; // 개발용
 
  	        const track = currentPlaylist[playingIndex];
 
-           // SOP 전용 틱비트 스케일링 가중치 설정 (SOP는 대개 내부 해상도가 다름)
+            // SOP 전용 틱비트 스케일링 가중치 설정 (SOP는 대개 내부 해상도가 다름)
             const liveTickBeat = track.tickBeat || 24;
 
             // 1. 기본 하드웨어 및 오디오 엔진 상태값 확보
@@ -673,74 +672,22 @@ window['playlist']=currentPlaylist; // 개발용
                 // }
 
 				//adjustedTick = adplugInstance._emu_get_current_position()/8 // 임시조치
-            } else {
+            } else { // if (isSop) {
                 // IMS / ROL 등의 순정 규격 역산 필터
                 if (rawHardwareTick > 0) {
                     adjustedTick = rawHardwareTick / 8;
                 } else {
                     adjustedTick = (currentMs / 1000) * ((liveBpm * liveTickBeat) / 60) / 8;
                 }
-            }
+            } // if (isSop) {...} else { 
 
-            let left = 0;
-            let right = currentIssData.records.length - 1;
-            let resultIndex = -1;
-            while (left <= right) {
-                const mid = Math.floor((left + right) / 2);
-                if (currentIssData.records[mid].kasaTick <= adjustedTick) {
-                    resultIndex = mid;
-                    left = mid + 1;
-                } else {
-                    right = mid - 1;
-                }
-            }
-            if (resultIndex >= 0) {
-                const currentRecord = currentIssData.records[resultIndex];
-                const rawLine = currentIssData.scripts[currentRecord.line] || "";
-                const currentLine = rawLine.trimEnd();
-//                const currentLine = rawLine;
-//console.log(rawHardwareTick,adjustedTick,resultIndex,rawLine)
-                let nextLine = "";
-                if (resultIndex < currentIssData.records.length - 1) {
-                    for (let i = resultIndex + 1; i < currentIssData.records.length; i++) {
-                        if (currentIssData.records[i].line !== currentRecord.line) {
-                            const rawNext = currentIssData.scripts[currentIssData.records[i].line] || "";
-                            nextLine = rawNext.trimEnd();
-                            break;
-                        }
-                    }
-                }
-                let bytePos = 0;
-                let charPos = 0;
-                const startX = currentRecord.startX;
-                const widthX = currentRecord.widthX;
-                while (bytePos < startX && charPos < currentLine.length) {
-                    bytePos += currentLine.charCodeAt(charPos) > 127 ? 2 : 1;
-                    charPos++;
-                }
-                bytePos = 0;
-                while (bytePos < widthX && charPos < currentLine.length) {
-                    bytePos += currentLine.charCodeAt(charPos) > 127 ? 2 : 1;
-                    charPos++;
-                }
-                const highlightEnd = charPos; // [기존 순정 코드 라인]
-                
-                // 🎯 [수정 및 버그 치유 지점] 
-                // 전체를innerHTML로 덮어쓰지 않고 내부 구조만 안전하게 갱신하여 클릭 이벤트를 살려둡니다.
-				/*
-                lyricsDisplay.innerHTML = `
-                  <div class="lyrics-area" style="pointer-events: none;">
-                    <div class="lyrics-now">
-                      <span class="lyrics-highlight">${currentLine.substring(0, highlightEnd)}</span><span class="lyrics-normal">${currentLine.substring(highlightEnd)}</span>
-                    </div>
-                    <div class="lyrics-next"><span>${nextLine}</span></div>
-                  </div>`;
-				*/
-				updateLyricsDOMFast(currentLine, highlightEnd, nextLine);
-					
+			let update = Lyric.update(adjustedTick);
+            if (Lyric.resultIndex >= 0) {
+				updateLyricsDOMFast( update );
+
                 // 🎯 [전체 가사 실시간 하이라이트 & 자동 스크롤 추적 엔진]
                 if (lyricsFullDialog && !lyricsFullDialog.classList.contains("hidden")) {
-                    const currentLineIndex = currentRecord.line;
+                    const currentLineIndex = Lyric.currentRecord.line;
                     
                     // 기존 강조 해제
                     document.querySelectorAll(".full-lyrics-line").forEach(el => {
@@ -762,7 +709,9 @@ window['playlist']=currentPlaylist; // 개발용
                         });
                     } // if (targetLineEl) {
                 } // if (lyricsFullDialog && !lyricsFullDialog.classList.contains("hidden")) {
-            } // if (resultIndex >= 0) {
+            } else { // if (resultIndex >= 0) {
+				lyricsDisplay.innerHTML = '                          🎵 (간주 중)';
+		    }
         }, 80); // 기존 80에서 250~300으로 완화
     }
 
@@ -795,7 +744,7 @@ window['playlist']=currentPlaylist; // 개발용
         try {
             let musicArrayBuffer;
             let bnkArrayBuffer = null;
-            currentIssData = null;
+            Lyric.currentIssData = null;
             if (track.fileObject) musicArrayBuffer = await track.fileObject.arrayBuffer();
             else {
                 const response = await fetch(track.url);
@@ -840,13 +789,11 @@ window['playlist']=currentPlaylist; // 개발용
 						track.bnkName = targetBnkName; // 뱅크파일 출력용
                     } else if (window.uploadedBnkMap && window.uploadedBnkMap.has("standard.bnk")) {
                         console.log(`%c[공유 뱅크] %c로컬 STANDARD.BNK 매핑 완료`, "color: #54ffff; font-weight:bold;");
-						//printDosLog(`[BANK] STANDARD SHARE MAP ACTIVE: "STANDARD.BNK" LOADED.`); // 도스로그 : 뱅크 도킹 성공 시
 						triggerDosLog(`[BANK] STANDARD SHARE MAP ACTIVE: "STANDARD.BNK" LOADED.`); // 도스로그 : 뱅크 도킹 성공 시
                         const localStdBnk = window.uploadedBnkMap.get("standard.bnk");
                         bnkArrayBuffer = await localStdBnk.arrayBuffer();
 						targetBnkName = 'STANDARD.BNK'; // 뱅크파일 출력용
                     } else {
-						//printDosLog(`[BANK] DETECTING SERVER REPOSITORY FOR INSTRUMENT DATA...`); // 도스로그 : 뱅크 도킹 성공 시
 						triggerDosLog(`[BANK] DETECTING SERVER REPOSITORY FOR INSTRUMENT DATA...`); // 도스로그 : 뱅크 도킹 성공 시
                         //let primaryBnkPath = track.fileObject ? `./${targetBnkName}` : `./folder/${targetBnkName}`;
                         let primaryBnkPath = targetBnkName;
@@ -882,34 +829,14 @@ window['playlist']=currentPlaylist; // 개발용
 
 			// 가사 읽기
             if ([".ims", ".rol", ".sop"].includes(ext)) {
-                if (track.issFileObject) {
-//console.log('track.issFileObject',track.issFileObject);
-					track.issName = track.issFileObject.name; // 가사 파일명
-                    const issBuf = await track.issFileObject.arrayBuffer();
-                    if (window.ChipTuneTitleParser) currentIssData = window.ChipTuneTitleParser.parseISSFile(issBuf);
-                } else if (!track.fileObject) {
-                    const lastDotIdx = track.url.lastIndexOf(".");
-                    const serverIssUrl =
-                        lastDotIdx === -1 ? track.url + ".ISS" : track.url.substring(0, lastDotIdx) + ".ISS";
-                    try {
-                        const issCheck = await fetch(serverIssUrl, { method: "HEAD" });
-                        if (issCheck.ok) {
-                            const issResponse = await fetch(serverIssUrl);
-                            const issBuf = await issResponse.arrayBuffer();
-                            if (window.ChipTuneTitleParser)
-                                currentIssData = window.ChipTuneTitleParser.parseISSFile(issBuf);
-							track.issName = serverIssUrl.split('/').pop();
-                        }
-                    } catch (e) {}
-                }
-
+				await Lyric.load(track);
+				track.issName = Lyric.issName;
+//console.log('track.issName',track.issName)
 				// 도스로그 : 가사 매핑할 때
-				if(currentIssData){
+				if(Lyric.currentIssData){
 					if(ext == '.sop'){
-						//printDosLog(`[LYRICS] ISS FILE BOUND. SYNC RATIO: 1.87`); // 도스로그 : 가사 매핑할 때
 						triggerDosLog(`[LYRICS] ISS FILE BOUND. SYNC RATIO: 1.87`); // 도스로그 : 가사 매핑할 때
 					}else{
-						//printDosLog(`[LYRICS] ISS FILE BOUND.`); // 도스로그 : 가사 매핑할 때
 						triggerDosLog(`[LYRICS] ISS FILE BOUND.`); // 도스로그 : 가사 매핑할 때
 					}
 				}
@@ -944,25 +871,11 @@ window['playlist']=currentPlaylist; // 개발용
             // 음악파일을 모듈에 적재.
             await audioEngine.loadTrack(musicArrayBuffer, track.filename, bnkArrayBuffer);
             audioEngine.play();  // 재생시작
-			//printDosLog(`[AUDIO] STARTING PLAYBACK: ${track.title}`); // 도스로그 : 재생 시작할 때
             // 📟 성공 로그 최종 전사
             const currentEngine = window.TrackerAudioEngine.currentEngineType || "UNKNOWN";
-            //errorMessage.innerHTML += `<div>[SYSTEM] ENGINE TYPE "${currentEngine.toUpperCase()}" INITIALIZED.</div>`;
-            //errorMessage.innerHTML += `<div>[AUDIO] NOW PLAYING: "${track.title}" (BPM: ${bTempo} / TICK: ${tBeat})</div>`;
-            //errorMessage.innerHTML += `<div>C:\\MUSIC&gt; <span class="dos-blink">_</span></div>`; // 깜빡이는 커서 연출
-            //errorMessage.scrollTop = errorMessage.scrollHeight;			
-			//printDosLog(`[SYSTEM] ENGINE TYPE "${currentEngine.toUpperCase()}" INITIALIZED.`); // 도스로그 : 재생 시작할 때
-			//printDosLog(`[AUDIO] NOW PLAYING: "${track.title}" (BPM: ${track.bTempo||120} / TICK: ${track.tBeat||24})`); // 도스로그 : 재생 시작할 때
 			triggerDosLog(`[SYSTEM] ENGINE TYPE "${currentEngine.toUpperCase()}" INITIALIZED.`,10); // 도스로그 : 재생 시작할 때
 			triggerDosLog(`[AUDIO] NOW PLAYING: "${track.title}" (BPM: ${track.bTempo||120} / TICK: ${track.tBeat||24})`,15); // 도스로그 : 재생 시작할 때
-			//printDosLog(`C:\\MUSIC&gt; <span class="dos-blink">_</span>`); // 도스로그 : 재생 시작할 때
-			// 🎯 새로운 로그를 찍기 전에, 기존에 깜빡이던 임시 프롬프트 라인이 있다면 제거하거나 고정시킵니다.
-			//const prevPrompt = document.getElementById("dosPromptLine");
-			//if (prevPrompt) {
-			//	prevPrompt.removeAttribute("id"); // ID를 제거해서 중복 방지
-			//	prevPrompt.innerHTML = `C:\\MUSIC&gt;`; // 깜빡이던 커서 제거
-			//}
-			//printDosLog(`<span id="dosPromptLine">C:\\MUSIC&gt; <span class="dos-blink">_</span></span>`); // 도스로그 : 재생 시작할 때
+
 			// 버튼 상태 변경
             btnPlay.innerHTML = imgPause;
             btnStop.removeAttribute("disabled");
@@ -997,7 +910,7 @@ window.song = track; // 디버그용
 		    //const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
 //console.log('ext',ext)
 			// 가사 없을 때 음악파일 해더 정보 출력
-			if(!currentIssData && ext=='.vgm'){
+			if(!Lyric.currentIssData && ext=='.vgm'){
 				let header = window.ChipTuneTitleParser.extractHeader(musicArrayBuffer, track.filename);
 				//console.log('header',header);
 				lyricsDisplay.innerHTML = `
@@ -1009,7 +922,7 @@ window.song = track; // 디버그용
 				  <div><span class="format-ext">Game[원문]</span> ${header.gameOrg}</div>
 				</div>
 				`;
-			}else if(!currentIssData && ext=='.msc'){
+			}else if(!Lyric.currentIssData && ext=='.msc'){
 				let header = window.ChipTuneTitleParser.extractHeader(musicArrayBuffer, track.filename);
 				lyricsDisplay.innerHTML = `
 				<div class="lyrics-area">
@@ -1018,8 +931,8 @@ window.song = track; // 디버그용
 				  <div><span class="format-ext">Descript</span> ${header.desc}</div>
 				</div>
 				`;
-			}else if(!currentIssData && ext=='.sop'){
-console.log('currentIssData',currentIssData)
+			}else if(!Lyric.currentIssData && ext=='.sop'){
+console.log('Lyric.currentIssData',Lyric.currentIssData)
 				let header = window.ChipTuneTitleParser.extractHeader(musicArrayBuffer, track.filename);
 				lyricsDisplay.innerHTML = `
 				<div class="lyrics-area">
@@ -1033,7 +946,7 @@ console.log('currentIssData',currentIssData)
 				  <div><span class="format-ext">Comment</span> ${header.comment}</div>
 				</div>
 				`;
-			}else if(!currentIssData && ext=='.dtm'){
+			}else if(!Lyric.currentIssData && ext=='.dtm'){
 				let header = window.ChipTuneTitleParser.extractHeader(musicArrayBuffer, track.filename);
 				let descStr = '';
 				for(var i=0; i<header.desc.length; i++){
@@ -1047,7 +960,7 @@ console.log('currentIssData',currentIssData)
 				  ${descStr}
 				</div>
 				`;
-			}else if(!currentIssData && ext=='.xad'){
+			}else if(!Lyric.currentIssData && ext=='.xad'){
 				let header = window.ChipTuneTitleParser.extractHeader(musicArrayBuffer, track.filename);
 				lyricsDisplay.innerHTML = `
 				<div class="lyrics-area">
@@ -1059,21 +972,16 @@ console.log('currentIssData',currentIssData)
 				`;
 			}else{
 				lyricsDisplay.innerHTML = `가사 음슴`;
-				if(!currentIssData && window.innerWidth<768) document.querySelector('.dos-panel-credits').classList.add('hidden');
+				if(!Lyric.currentIssData && window.innerWidth<768) document.querySelector('.dos-panel-credits').classList.add('hidden');
 				//document.querySelector('.dos-panel-credits').classList.remove('hidden');
 			}
 
-			
             runStateSyncLoop(); // 상태 체크 루프 시작
             renderPlaylist(); // 플레이리스트 그림
         } catch (err) {
             console.error(err);
-			
-			//errorMessage.classList.remove('hidden');
-			//errorMessage.innerHTML += `<div>> ${err}</div>`;
+
             statusBarText.innerText = `적재 실패: ${track.title}`;
-			
-			//printDosLog(`[ERROR] LOAD FAILED: ${err.message}`); // 도스로그 : 에러 발생 시
 			triggerDosLog(`[ERROR] LOAD FAILED: ${err.message}`); // 도스로그 : 에러 발생 시
         } finally {
             if (overlay) overlay.classList.add("hidden");
@@ -1409,15 +1317,10 @@ console.log('currentIssData',currentIssData)
 		statusBarText.innerText = `재생중지`;
 		renderPlaylist(); // 재생 목록 갱신(연주중 표시 해제)
         clearInterval(stateUpdateInterval); // 상태 체크 루프 중지
-		//printDosLog(`[STOP] PLAYBACK HALTED.`); // 도스로그 : 정지
-		//printDosLog(`[AUDIO] PLAYBACK HALTED BY USER. CORE SUSPENDED.`); // 도스로그 : 정지
-		//printDosLog(`C:\\MUSIC&gt; _`); // 도스로그 : 정지
 		triggerDosLog(`[AUDIO] PLAYBACK HALTED BY USER. CORE SUSPENDED.`,15); // 도스로그 : 정지
-		//triggerDosLog(`C:\\MUSIC&gt; _`); // 도스로그 : 정지
 		
     });
     btnNext.addEventListener("click", () => { // 다음곡
-		//printDosLog(`[NEXT]`); // 도스로그 : 다음곡
 		triggerDosLog(`[NEXT]`); // 도스로그 : 다음곡
         if (playingIndex < currentPlaylist.length - 1) {
             playingIndex++;
@@ -1426,7 +1329,6 @@ console.log('currentIssData',currentIssData)
         }
     });
     btnPrev.addEventListener("click", () => {  // 이전곡
-		//printDosLog(`[PREV]`); // 도스로그 : 이전곡
 		triggerDosLog(`[PREV]`); // 도스로그 : 이전곡
         if (playingIndex > 0) {
             playingIndex--;
@@ -1633,7 +1535,7 @@ console.log('currentIssData',currentIssData)
         // 기존의 이벤트를 안전하게 재등록
         lyricsDisplay.onclick = () => {
             // 🎯 [버그 해결 핵심] 연주를 중지시키는 브라우저 강제 락(alert)을 전면 철폐합니다!
-            if (!currentIssData || !currentIssData.scripts || currentIssData.scripts.length === 0) {
+            if (!Lyric.currentIssData || !Lyric.currentIssData.scripts || Lyric.currentIssData.scripts.length === 0) {
                 // 시스템 얼럿 대신, 하단 DOS 레트로 로그 화면에 정중하게 에러 알림을 찍어 연주를 보존합니다.
                 triggerDosLog(`[ERROR] SHOW FULL LYRICS FAILED: NO LYRICS (.ISS) BOUND.`, 10);
                 
@@ -1653,7 +1555,7 @@ console.log('currentIssData',currentIssData)
 
             // 1. 줄(line) 단위 엘리먼트 빌드
             lyricsFullContent.innerHTML = ""; 
-            currentIssData.scripts.forEach((line, index) => {
+            Lyric.currentIssData.scripts.forEach((line, index) => {
                 const lineDiv = document.createElement("div");
                 lineDiv.className = "full-lyrics-line";
                 lineDiv.setAttribute("data-line", index);

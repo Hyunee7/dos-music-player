@@ -499,7 +499,7 @@ window.ChipTuneTitleParser = (function() {
 	 */
     parseISSFile(arrayBuffer) {
       const u8 = new Uint8Array(arrayBuffer); if (u8.length < 154) return null;
-      let offset = 30; // ISS 파일 사인정보 스킵
+      let offset = 30;  // Signature "IMPlay Song V2.0    " (20바이트) + Reserved(10바이트) 오프셋 통과
 	  // 해더정보
 	  const writer    = readNullTerminated(u8, offset, 30); offset += 30; // 작사
 	  const composer  = readNullTerminated(u8, offset, 30); offset += 30; // 작곡
