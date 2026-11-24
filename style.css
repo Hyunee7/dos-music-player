@@ -633,7 +633,7 @@ body { /*2* /
 /* 가사 하이라이트 */
 .lyrics-highlight {
   color: var(--text-main);
-  font-weight: bold;
+  /*font-weight: bold;*/
   display: inline;
     display: inline-block; /* 인라인 요소일 경우 필수 */
     transform: scaleY(1.8); /* 1보다 크면 세로로 늘어남 (예: 1.5배) */

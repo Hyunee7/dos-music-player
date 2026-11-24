@@ -528,7 +528,7 @@ window['playlist']=currentPlaylist; // 개발용
 		if (!lyricsDisplay) return;
 		lyricsDisplay.innerHTML = `
 		  <div class="lyrics-area" style="pointer-events: none;">
-			<div class="lyrics-now">
+			<div id="lyricsNow" class="lyrics-now">
 			  <span id="lyrHighlight" class="lyrics-highlight"></span><span id="lyrNormal" class="lyrics-normal"></span>
 			</div>
 			<div class="lyrics-next"><span id="lyrNext"></span></div>
@@ -555,6 +555,43 @@ window['playlist']=currentPlaylist; // 개발용
 		if (elNormal.textContent !== textNormal) elNormal.textContent = textNormal;
 		if (elNext.textContent !== lyric.nextLine) elNext.textContent = lyric.nextLine;
 	}
+    
+	// 기존 runStateSyncLoop 내부의 가사 출력 (innerHTML 갱신부)을 아래 방식으로 대체합니다.
+	function updateLyricsDOMFast(lyric) {
+		const elNow = document.getElementById("lyricsNow");
+		const elNext = document.getElementById("lyrNext");
+		
+		// 만약 최초 실행으로 구조가 없다면 구조 생성
+		if (!elNow || !elNext) {
+			initializeLyricsDOM();
+			return;
+		}
+      const { textRuns, nextLine } = lyric;
+
+      // 정상적인 하이라이트 범위 정보가 수급되었는지 검증
+      if (textRuns && textRuns.length > 0) {
+        // 🎯 이미 파서 내부에서 글자 단위 완벽 마감 처리가 끝난 조각들을 결합 수행
+        let finalHtml = "";
+        const runLen = textRuns.length;
+        for (let i = 0; i < runLen; i++) {
+          const run = textRuns[i];
+          if (run.lit) {
+            // 불이 들어온 액티브 가사 구간 출력
+            finalHtml += `<span class="lyrics-highlight">${run.text}</span>`;
+          } else {
+            // 간주 중이거나 하이라이트 대기 상태
+            finalHtml += `<span class="lyrics-normal">${run.text}</span>`;
+          }
+        }
+        
+        // 🎯 [미세 떨림 방지]: HTML 내용이 실제로 변했을 때만 DOM에 주사
+        if (elNow.innerHTML !== finalHtml) {
+          elNow.innerHTML = finalHtml;
+        }
+      }
+      
+      if (elNext.textContent !== nextLine) elNext.textContent = nextLine;
+    }
 
     /**
      * 가사/시간 동기화
